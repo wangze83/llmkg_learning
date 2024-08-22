@@ -1,0 +1,33 @@
+services:
+    flask:
+        depends_on:
+          - neo4j
+        image: flask_image
+        ports:
+          - "5001:5000"
+        environment:
+          - FLASK_ENV=development
+        volumes:
+          - ../web:/app
+        networks:
+          - mynetwork
+
+    neo4j:
+        image: neo4j
+        ports:
+          - "7687:7687"
+          - "7474:7474"
+        environment:
+          - NEO4J_AUTH=neo4j/password
+          - NEO4J_server_memory_heap_max__size=4G
+          - NEO4J_server_memory_heap_initial__size=4G
+        volumes:
+          - ../neo4j_data/data:/data
+          - ../neo4j_data/logs:/logs
+          - ../neo4j_data/plugins:/plugins
+          - ../preprocess_data/data_out:/var/lib/neo4j/import
+        networks:
+          - mynetwork
+
+networks:
+  mynetwork:

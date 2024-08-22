@@ -1,0 +1,10 @@
+*.swp
+.idea
+docker/dev/.env
+.git
+.DS_Store
+temp
+neo4j_data
+venv
+.idea
+llmkg_learning.iml

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- Modal -->
+<div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="formModalLabel">Personal Knowledge Graph Setup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="user-form">
+                    <div class="mb-3">
+                        <label for="course" class="form-label">username:</label>
+                        <input type="text" class="form-control" id="username" name="username" >
+                    </div>
+                    <div class="mb-3">
+                        <label for="course" class="form-label">Course:</label>
+                        <input type="text" class="form-control" id="course" name="course" >
+                    </div>
+                    <div class="mb-3">
+                        <label for="level" class="form-label">Desired Level:</label><br>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="level" id="beginner" value="Beginner" required checked>
+                            <label class="form-check-label" for="beginner">
+                                Beginner
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="level" id="intermediate" value="Intermediate" required>
+                            <label class="form-check-label" for="intermediate">
+                                Intermediate
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="level" id="advanced" value="Advanced" required>
+                            <label class="form-check-label" for="advanced">
+                                Advanced
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="goal" class="form-label">Learning Goal:</label>
+                        <input type="text" class="form-control" id="goal" name="goal" >
+                    </div>
+                    <div class="mb-3">
+                        <label for="skills" class="form-label">Current Skills:</label>
+                        <input type="text" class="form-control" id="skills" name="skills">
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="saveForm()">Save</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="main-content">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#formModal">
+        View/Edit Form
+    </button>
+    <div id="search-section" class="mt-4">
+        <input type="text" id="search-input" class="form-control" placeholder="Enter your learning goal...">
+        <button class="btn btn-secondary mt-2" onclick="generatePrompt()">Generate Prompt</button>
+    </div>
+    <div id="prompt-section" style="display: none;">
+        <p>Generated Prompt:</p>
+        <p id="generated-prompt"></p>
+        <button class="btn btn-info" onclick="searchGPT()">Search</button>
+    </div>
+    <div id="gpt-response-section" style="display: none;">
+        <div id="gpt-response"></div>
+        <button class="btn btn-success" onclick="copyText()">Copy</button>
+        <button class="btn btn-warning" onclick="regeneratePrompt()">Regenerate</button>
+        <button class="btn btn-danger" onclick="handleResponse('bad')">Bad Response</button>
+        <button class="btn btn-primary" onclick="handleResponse('good')">Good Response</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    var myModal = new bootstrap.Modal(document.getElementById('formModal'));
+
+    function saveForm() {
+        const form = document.getElementById('user-form');
+        const fields = [
+            { id: 'username', message: 'Please enter your username.' },
+            { id: 'course', message: 'Please enter the course name.' },
+            { id: 'goal', message: 'Please enter your learning goal.' }
+        ];
+
+        let formValid = true;
+
+        fields.forEach(field => {
+            const input = document.getElementById(field.id);
+            if (input) {
+                if (input.value.trim() === '') {
+                    input.setCustomValidity(field.message);
+                    formValid = false;
+                } else {
+                    input.setCustomValidity(''); // 清除自定义提示语
+                }
+            } else {
+                console.error(`Element with ID '${field.id}' not found.`);
+                formValid = false;
+            }
+        });
+
+        if (formValid && form.checkValidity()) {
+            const formData = {
+                username: document.getElementById('username').value.trim(),
+                course: document.getElementById('course').value.trim(),
+                level: document.querySelector('input[name="level"]:checked').value,
+                goal: document.getElementById('goal').value.trim(),
+                skills: document.getElementById('skills').value.trim()
+            };
+
+            fetch('/save_form', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    const modal = new bootstrap.Modal(document.getElementById('formModal'));
+                    modal.hide();
+                    document.getElementById('main-content').style.display = 'block';
+                });
+        } else {
+            form.reportValidity(); // 显示自定义提示语
+        }
+        myModal.hide();
+    }
+
+
+
+    function showForm() {
+        fetch(`/get_user_data?username=${encodeURIComponent(username)}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('username').value = data.username;
+                document.getElementById('course').value = data.course;
+                // 修改显示单选按钮的选定值
+                const levelRadioButtons = document.getElementsByName('level');
+                levelRadioButtons.forEach(button => {
+                    if (button.value === data.level) {
+                        button.checked = true;
+                    }
+                });
+                document.getElementById('goal').value = data.goal;
+                document.getElementById('skills').value = data.skills;
+                document.getElementById('form-modal').style.display = 'block';
+                document.getElementById('main-content').style.display = 'none';
+            });
+    }
+
+    function generatePrompt() {
+        const userInput = document.getElementById('search-input').value;
+        // Call server to split keywords and generate prompt
+        fetch('/generate_prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({input: userInput})
+        })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('generated-prompt').innerText = data.prompt;
+                document.getElementById('prompt-section').style.display = 'block';
+            });
+    }
+
+    function searchGPT() {
+        const prompt = document.getElementById('generated-prompt').innerText;
+        const gptResponseSection = document.getElementById('gpt-response-section');
+        gptResponseSection.style.display = 'block';
+
+        // Use WebSockets or polling for progressive response (simplified for demonstration)
+        fetch('/query_gpt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({prompt: prompt})
+        })
+            .then(response => response.json())
+            .then(data => {
+                const gptResponseDiv = document.getElementById('gpt-response');
+                gptResponseDiv.innerText = '';
+                for (const line of data.response.split('\n')) {
+                    const p = document.createElement('p');
+                    p.textContent = line;
+                    gptResponseDiv.appendChild(p);
+                }
+            });
+    }
+
+    function handleResponse(type) {
+        const prompt = document.getElementById('generated-prompt').innerText;
+        const response = document.getElementById('gpt-response').innerText;
+        // Handle good/bad response
+        fetch(`/handle_response`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({type, prompt, response})
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            });
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+FROM python:3.10
+
+WORKDIR /app
+
+COPY web /app
+
+RUN pip3 install --upgrade pip --default-timeout=1000 -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip3 --no-cache-dir install --default-timeout=1000  -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+
+
+EXPOSE 5000
+
+ENTRYPOINT ["python3"]
+CMD ["app.py"]
+
