@@ -3,3 +3,4 @@ Flask
 neo4j
 openai==0.27.0
 python-dotenv
+requests[socks]

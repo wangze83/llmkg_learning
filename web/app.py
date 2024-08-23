@@ -2,23 +2,44 @@ from flask import Flask, render_template, request, jsonify
 import neo4j
 import openai
 import json
+import requests
 import os
 
 app = Flask(__name__)
 
 def query_openai_api(prompt):
-    try:
-        response = openai.Completion.create(
-            engine="gpt-4-turbo",  # 使用你希望的模型
-            prompt=prompt,
-            max_tokens=150,  # 设置返回的token数量
-            n=1,  # 只返回一个响应
-            stop=None,
-            temperature=0.7  # 设置创意程度
-        )
-        return response.choices[0].text.strip()
-    except Exception as e:
-        return f"Error querying OpenAI API: {str(e)}"
+    api_key = config['openai_api_key']  # 从环境变量中获取API密钥
+    if not api_key:
+        raise ValueError("请在环境变量中设置OPENAI_API_KEY")
+
+    url = "https://api.openai.com/v1/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": "gpt-4o-mini",  # 确保你使用的是正确的模型名称
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+
+    proxies = {
+        "http": "http://host.docker.internal:1087",
+        "https": "http://host.docker.internal:1087"
+    }
+
+    response = requests.post(url, headers=headers, json=data, proxies=proxies)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"请求失败，状态码: {response.status_code}, 返回内容: {response.text}")
+
+
 
 def load_config():
     config_path = './config/config.json'
@@ -31,7 +52,6 @@ def load_config():
     return config
 
 config = load_config()
-openai.api_key = config['openai_api_key']
 
 # Initialize Neo4j driver
 neo4j_driver = neo4j.GraphDatabase.driver(
@@ -44,7 +64,21 @@ def get_db_connection():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    username = request.args.get('username')  # 从URL中获取username参数
+    user_data = {}
+
+    if username:
+        with get_db_connection() as session:
+            result = session.run("""
+            MATCH (u:User {username: $username}) 
+            RETURN u.username AS username, u.course AS course, u.level AS level, u.goal AS goal, u.skills AS skills 
+            LIMIT 1
+            """, username=username)
+            record = result.single()
+            if record:
+                user_data = dict(record)
+
+    return render_template('index.html', user_data=user_data)  # 将用户数据传递给模板
 
 @app.route('/save_form', methods=['POST'])
 def save_form():
@@ -56,28 +90,84 @@ def save_form():
         """, username=data['username'], course=data['course'], level=data['level'], goal=data['goal'], skills=data['skills'])
     return jsonify({'message': 'Form saved successfully'})
 
-@app.route('/get_user_data', methods=['GET'])
-def get_user_data():
-    username = request.args.get('username')  # 获取前端传递的用户名
+
+@app.route('/get_learning_state', methods=['GET'])
+def get_learning_state():
+    username = request.args.get('username')
     with get_db_connection() as session:
-        result = session.run("MATCH (u:User {username: $username}) RETURN u.course AS course, u.level AS level, u.goal AS goal, u.skills AS skills LIMIT 1", username=username)
-        user_data = result.single()
-        if user_data:
-            return jsonify(dict(user_data))
-        return jsonify({})
+        user = session.run("""
+        MATCH (u:User {username: $username})
+        RETURN u.course AS course, u.level AS level, u.goal AS goal, u.skills AS skills
+        """, username=username).single()
+
+    if user:
+        return jsonify({
+            'learning_state': {
+                'course': user['course'],
+                'level': user['level'],
+                'goal': user['goal'],
+                'skills': user['skills']
+            }
+        })
+    else:
+        return jsonify({'error': 'User not found'}), 404
 
 @app.route('/generate_prompt', methods=['POST'])
 def generate_prompt():
     data = request.json
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    username = data.get('username')
+    if not username:
+        return jsonify({'error': 'Username is required'}), 400
+
+    # 从Neo4j获取用户的知识图谱
+    with get_db_connection() as session:
+        result = session.run("""
+            MATCH (u:User {username: $username})
+            RETURN u.course AS course, u.level AS level, u.goal AS goal, u.skills AS skills
+            LIMIT 1
+        """, username=username)
+        user_data = result.single()
+
+    if not user_data:
+        return jsonify({'error': 'User not found'}), 404
+
+    # 提取知识图谱信息
+    knowledge_graph = {
+        "course": user_data["course"],
+        "level": user_data["level"],
+        "goal": user_data["goal"],
+        "skills": user_data["skills"]
+    }
+
+    # 使用GPT提取关键字
     keywords = split_keywords(data['input'])
-    knowledge_graph = {"course": "cs1", "level": "beginner"}  # Simplified for demo
+
+    # 根据关键字和知识图谱生成Prompt
     prompt = generate_prompt_by(keywords, knowledge_graph)
+
     return jsonify({'prompt': prompt})
 
 def split_keywords(user_input):
-    return user_input.split()
+    prompt = f"You are an AI assistant designed to help students with personalized learning. A student wants to learn a topic and has asked the following question: '{user_input}' Please identify the keywords in the question. Focus on extracting terms that are directly relevant to the student's educational needs. notice, just return the keywords."
+    response = query_openai_api(prompt)
+
+    # 从响应中提取内容 (假设API返回的结构是我们期望的)
+    if 'choices' in response and len(response['choices']) > 0:
+        keywords_text = response['choices'][0]['message']['content']
+    else:
+        raise Exception("未能从OpenAI API中提取关键词")
+
+    # 假设GPT返回一个逗号分隔的字符串，处理成列表
+    keywords = [keyword.strip() for keyword in keywords_text.split(",") if keyword.strip()]
+
+    return keywords
+
 
 def generate_prompt_by(keywords, knowledge_graph):
+    # 生成的学习路径Prompt
     return f"Learning path for {keywords} based on your knowledge in {knowledge_graph['course']} at {knowledge_graph['level']} level."
 
 @app.route('/query_gpt', methods=['POST'])
@@ -92,7 +182,6 @@ def query_gpt():
     lines = response.split('.')
     return jsonify({'response': '.\n'.join(lines)})
 
-
 @app.route('/handle_response', methods=['POST'])
 def handle_response():
     data = request.json
@@ -104,7 +193,6 @@ def handle_response():
             """, username=data['username'])
         return jsonify({'message': 'Knowledge graph updated!'})
     return jsonify({'message': 'Response acknowledged.'})
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

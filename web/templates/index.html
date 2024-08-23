@@ -17,49 +17,50 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+
+
                 <form id="user-form">
                     <div class="mb-3">
-                        <label for="course" class="form-label">username:</label>
-                        <input type="text" class="form-control" id="username" name="username" >
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" value="{{ user_data.username }}" required>
                     </div>
                     <div class="mb-3">
-                        <label for="course" class="form-label">Course:</label>
-                        <input type="text" class="form-control" id="course" name="course" >
+                        <label for="course" class="form-label">Course</label>
+                        <input type="text" class="form-control" id="course" value="{{ user_data.course }}" required>
                     </div>
                     <div class="mb-3">
-                        <label for="level" class="form-label">Desired Level:</label><br>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="level" id="beginner" value="Beginner" required checked>
-                            <label class="form-check-label" for="beginner">
-                                Beginner
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="level" id="intermediate" value="Intermediate" required>
-                            <label class="form-check-label" for="intermediate">
-                                Intermediate
-                            </label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="level" id="advanced" value="Advanced" required>
-                            <label class="form-check-label" for="advanced">
-                                Advanced
-                            </label>
+                        <label for="goal" class="form-label">Learning Goal</label>
+                        <input type="text" class="form-control" id="goal" value="{{ user_data.goal }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Skill Level</label>
+                        <div>
+                            <input type="radio" id="beginner" name="level" value="beginner"
+                                   {% if user_data.level == 'beginner' %} checked {% endif %} required>
+                            <label for="beginner">Beginner</label>
+                            <input type="radio" id="intermediate" name="level" value="intermediate"
+                                   {% if user_data.level == 'intermediate' %} checked {% endif %}>
+                            <label for="intermediate">Intermediate</label>
+                            <input type="radio" id="advanced" name="level" value="advanced"
+                                   {% if user_data.level == 'advanced' %} checked {% endif %}>
+                            <label for="advanced">Advanced</label>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="goal" class="form-label">Learning Goal:</label>
-                        <input type="text" class="form-control" id="goal" name="goal" >
-                    </div>
-                    <div class="mb-3">
-                        <label for="skills" class="form-label">Current Skills:</label>
-                        <input type="text" class="form-control" id="skills" name="skills">
+                        <label for="skills" class="form-label">Skills acquired</label>
+                        <input type="text" class="form-control" id="skills" value="{{ user_data.skills }}" required>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="saveForm()">Save</button>
-                </form>
             </div>
         </div>
     </div>
+</div>
+
+
+</form>
+
+<!-- 学习状态显示区域 -->
+<div id="learning-status" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; display: none">
 </div>
 
 <div id="main-content">
@@ -86,6 +87,34 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+
+
+    // 页面加载时获取并显示学习状态
+    document.addEventListener('DOMContentLoaded', function() {
+        const username = document.getElementById('username').value; // 假设用户名存储在隐藏字段中
+        fetch(`/get_learning_state?username=${username}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.learning_state) {
+                    const learningStatusDiv = document.getElementById('learning-status');
+                    learningStatusDiv.style.display = "block"; // 显示学习状态 div
+                    learningStatusDiv.innerHTML = `
+                    <h3>Current learning status</h3>
+                    <p>Course: ${data.learning_state.course}</p>
+                    <p>Skill Level: ${data.learning_state.level}</p>
+                    <p>Learning Goal: ${data.learning_state.goal}</p>
+                    <p>Skills acquired: ${data.learning_state.skills}</p>
+                `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
+
+
+
+
     var myModal = new bootstrap.Modal(document.getElementById('formModal'));
 
     function saveForm() {
@@ -132,25 +161,22 @@
                 .then(response => response.json())
                 .then(data => {
                     alert(data.message);
-                    const modal = new bootstrap.Modal(document.getElementById('formModal'));
-                    modal.hide();
-                    document.getElementById('main-content').style.display = 'block';
+                    myModal.hide(); // 关闭模态框
+                    const username = encodeURIComponent(formData.username); // 编码用户名以适应URL
+                    window.location.href = `?username=${username}`; // 跳转到包含用户名参数的URL
                 });
         } else {
             form.reportValidity(); // 显示自定义提示语
         }
-        myModal.hide();
     }
 
-
-
     function showForm() {
+        const username = document.getElementById('username').value;
         fetch(`/get_user_data?username=${encodeURIComponent(username)}`)
             .then(response => response.json())
             .then(data => {
                 document.getElementById('username').value = data.username;
                 document.getElementById('course').value = data.course;
-                // 修改显示单选按钮的选定值
                 const levelRadioButtons = document.getElementsByName('level');
                 levelRadioButtons.forEach(button => {
                     if (button.value === data.level) {
@@ -166,13 +192,18 @@
 
     function generatePrompt() {
         const userInput = document.getElementById('search-input').value;
-        // Call server to split keywords and generate prompt
+        const username = document.getElementById('username').value;  // 获取username
+
+        // 调用服务器拆分关键词并生成提示
         fetch('/generate_prompt', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({input: userInput})
+            body: JSON.stringify({
+                input: userInput,
+                username: username  // 将username附加到请求体
+            })
         })
             .then(response => response.json())
             .then(data => {
@@ -181,18 +212,19 @@
             });
     }
 
+
     function searchGPT() {
         const prompt = document.getElementById('generated-prompt').innerText;
         const gptResponseSection = document.getElementById('gpt-response-section');
         gptResponseSection.style.display = 'block';
 
-        // Use WebSockets or polling for progressive response (simplified for demonstration)
+        // 使用 WebSockets 或轮询获取渐进式响应（为了演示简化）
         fetch('/query_gpt', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({prompt: prompt})
+            body: JSON.stringify({ prompt: prompt })
         })
             .then(response => response.json())
             .then(data => {
@@ -209,13 +241,13 @@
     function handleResponse(type) {
         const prompt = document.getElementById('generated-prompt').innerText;
         const response = document.getElementById('gpt-response').innerText;
-        // Handle good/bad response
+        // 处理好/坏响应
         fetch(`/handle_response`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({type, prompt, response})
+            body: JSON.stringify({ type, prompt, response })
         })
             .then(response => response.json())
             .then(data => {
@@ -223,6 +255,7 @@
             });
     }
 </script>
+
 
 </body>
 </html>

@@ -4,12 +4,22 @@ WORKDIR /app
 
 COPY web /app
 
-RUN pip3 install --upgrade pip --default-timeout=1000 -i https://pypi.tuna.tsinghua.edu.cn/simple
-RUN pip3 --no-cache-dir install --default-timeout=1000  -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+# 在 sources.list.d 中创建一个新的源列表文件并使用国内镜像源
+RUN echo "deb http://mirrors.aliyun.com/debian/ bullseye main contrib non-free" > /etc/apt/sources.list.d/aliyun.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian/ bullseye main contrib non-free" >> /etc/apt/sources.list.d/aliyun.list && \
+    echo "deb http://mirrors.aliyun.com/debian-security bullseye-security main" >> /etc/apt/sources.list.d/aliyun.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian-security bullseye-security main" >> /etc/apt/sources.list.d/aliyun.list && \
+    echo "deb http://mirrors.aliyun.com/debian/ bullseye-updates main contrib non-free" >> /etc/apt/sources.list.d/aliyun.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian/ bullseye-updates main contrib non-free" >> /etc/apt/sources.list.d/aliyun.list && \
+    apt-get update && apt-get install -y vim
 
+# 更新pip并指定国内PyPI镜像源
+RUN pip3 install --upgrade pip --default-timeout=1000 -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 安装Python依赖
+RUN pip3 --no-cache-dir install --default-timeout=1000 -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 EXPOSE 5000
 
 ENTRYPOINT ["python3"]
 CMD ["app.py"]
-
