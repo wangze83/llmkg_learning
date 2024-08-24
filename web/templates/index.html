@@ -5,6 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Learning Assistant</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #main-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        #gpt-response {
+            background-color: #f1f1f1;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+        }
+
+        #prompt-section p,
+        #gpt-response p {
+            margin: 0;
+            padding: 5px 0;
+        }
+
+        .card {
+            border: none;
+            border-radius: 10px;
+        }
+
+        button {
+            margin-right: 10px;
+        }
+
+        button:last-child {
+            margin-right: 0;
+        }
+
+        .btn-success, .btn-warning, .btn-danger, .btn-primary {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-info {
+            width: 100%;
+        }
+
+        #search-section, #prompt-section, #gpt-response-section {
+            margin-top: 20px;
+        }
+
+
+    </style>
 </head>
 <body>
 
@@ -67,23 +115,32 @@
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#formModal">
         View/Edit Form
     </button>
+
     <div id="search-section" class="mt-4">
         <input type="text" id="search-input" class="form-control" placeholder="Enter your learning goal...">
         <button class="btn btn-secondary mt-2" onclick="generatePrompt()">Generate Prompt</button>
     </div>
-    <div id="prompt-section" style="display: none;">
+
+    <div id="prompt-section" class="card mt-4 p-3" style="display: none;">
         <p>Generated Prompt:</p>
-        <p id="generated-prompt"></p>
+        <p id="generated-prompt" class="bg-light p-2 rounded"></p>
         <button class="btn btn-info" onclick="searchGPT()">Search</button>
     </div>
-    <div id="gpt-response-section" style="display: none;">
-        <div id="gpt-response"></div>
-        <button class="btn btn-success" onclick="copyText()">Copy</button>
-        <button class="btn btn-warning" onclick="regeneratePrompt()">Regenerate</button>
-        <button class="btn btn-danger" onclick="handleResponse('bad')">Bad Response</button>
-        <button class="btn btn-primary" onclick="handleResponse('good')">Good Response</button>
+
+    <div id="gpt-response-section" class="mt-4" style="display: none;">
+        <!-- 使用卡片和对话气泡样式 -->
+        <div id="gpt-response" class="card p-3 bg-light"></div>
+
+        <!-- 按钮组放在一个卡片内 -->
+        <div class="card mt-3 p-3">
+            <button class="btn btn-success me-2" onclick="copyText()">Copy</button>
+            <button class="btn btn-warning me-2" onclick="regeneratePrompt()">Regenerate</button>
+            <button class="btn btn-danger me-2" onclick="handleResponse('bad')">Bad Response</button>
+            <button class="btn btn-primary" onclick="handleResponse('good')">Good Response</button>
+        </div>
     </div>
 </div>
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -111,9 +168,6 @@
                 console.error('Error:', error);
             });
     });
-
-
-
 
     var myModal = new bootstrap.Modal(document.getElementById('formModal'));
 
@@ -218,7 +272,6 @@
         const gptResponseSection = document.getElementById('gpt-response-section');
         gptResponseSection.style.display = 'block';
 
-        // 使用 WebSockets 或轮询获取渐进式响应（为了演示简化）
         fetch('/query_gpt', {
             method: 'POST',
             headers: {
@@ -229,12 +282,29 @@
             .then(response => response.json())
             .then(data => {
                 const gptResponseDiv = document.getElementById('gpt-response');
-                gptResponseDiv.innerText = '';
-                for (const line of data.response.split('\n')) {
-                    const p = document.createElement('p');
-                    p.textContent = line;
-                    gptResponseDiv.appendChild(p);
+                gptResponseDiv.innerText = ''; // 清空以前的内容
+
+                // 分割响应内容（按句号、问号、感叹号）
+                const segments = data.response.split(/(?<=[。！？])\s*/);
+                let currentIndex = 0;
+
+                function displayNextSegment() {
+                    if (currentIndex < segments.length) {
+                        const p = document.createElement('p');
+                        p.textContent = segments[currentIndex];
+                        gptResponseDiv.appendChild(p);
+                        currentIndex++;
+
+                        // 每隔1秒显示下一个段落或句子
+                        setTimeout(displayNextSegment, 1000);
+                    }
                 }
+
+                // 启动逐步展示
+                displayNextSegment();
+            })
+            .catch(error => {
+                console.error('Error fetching GPT response:', error);
             });
     }
 

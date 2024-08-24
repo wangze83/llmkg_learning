@@ -4,13 +4,14 @@ import openai
 import json
 import requests
 import os
+import logging
 
 app = Flask(__name__)
 
 def query_openai_api(prompt):
     api_key = config['openai_api_key']  # 从环境变量中获取API密钥
     if not api_key:
-        raise ValueError("请在环境变量中设置OPENAI_API_KEY")
+        raise ValueError("Setting OPENAI_API_KEY")
 
     url = "https://api.openai.com/v1/chat/completions"
 
@@ -170,17 +171,24 @@ def generate_prompt_by(keywords, knowledge_graph):
     # 生成的学习路径Prompt
     return f"Learning path for {keywords} based on your knowledge in {knowledge_graph['course']} at {knowledge_graph['level']} level."
 
+# 配置日志
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 @app.route('/query_gpt', methods=['POST'])
 def query_gpt():
     data = request.json
     prompt = data['prompt']
 
-    # Simulated GPT-4 response for demo purposes
+    # 调用 OpenAI API 获取响应
     response = query_openai_api(prompt)
 
-    # Simulate streaming by splitting response into chunks
-    lines = response.split('.')
-    return jsonify({'response': '.\n'.join(lines)})
+    # 提取API返回的内容部分
+    content = response['choices'][0]['message']['content']
+
+    # 返回提取的内容
+    return jsonify({'response': content})
+
+
 
 @app.route('/handle_response', methods=['POST'])
 def handle_response():
