@@ -154,15 +154,19 @@ def generate_prompt():
 def split_keywords(user_input):
     prompt = f"You are an AI assistant designed to help students with personalized learning. A student wants to learn a topic and has asked the following question: '{user_input}' Please identify the keywords in the question. Focus on extracting terms that are directly relevant to the student's educational needs. notice, just return the keywords."
     response = query_openai_api(prompt)
+    # 输出API响应的调试信息
+    print(f"API response: {response}")
 
     # 从响应中提取内容 (假设API返回的结构是我们期望的)
     if 'choices' in response and len(response['choices']) > 0:
         keywords_text = response['choices'][0]['message']['content']
+        print(f"Extracted keywords text: {keywords_text}")
     else:
         raise Exception("未能从OpenAI API中提取关键词")
 
     # 假设GPT返回一个逗号分隔的字符串，处理成列表
     keywords = [keyword.strip() for keyword in keywords_text.split(",") if keyword.strip()]
+    print(f"Final extracted keywords: {keywords}")
 
     return keywords
 
@@ -193,13 +197,28 @@ def query_gpt():
 @app.route('/handle_response', methods=['POST'])
 def handle_response():
     data = request.json
+    logging.debug(f"Received data: {data}")
+
     if data['type'] == 'good':
+        content = data.get('content', '')
+        logging.debug(f"Content to process: {content}")
+
+        # 提取关键字，假设提取结果
+        keywords = split_keywords(content)
+        logging.debug(f"Extracted keywords: {keywords}")
+
         with get_db_connection() as session:
-            session.run("""
-            MATCH (u:User {username: $username}) 
-            SET u.skills = coalesce(u.skills, '') + ', NLP Basics'
-            """, username=data['username'])
-        return jsonify({'message': 'Knowledge graph updated!'})
+            for keyword in keywords:
+                logging.debug(f"Updating knowledge graph for user: {data['username']} with skill: {keyword}")
+                session.run("""
+                MATCH (u:User {username: $username}) 
+                SET u.skills = coalesce(u.skills, '') + ', ' + $keyword
+                """, username=data['username'], keyword=keyword)
+
+        logging.debug("Knowledge graph updated successfully.")
+        return jsonify({'message': 'Knowledge graph updated with new skills!'})
+
+    logging.debug("Received response type is not 'good'. Acknowledging response.")
     return jsonify({'message': 'Response acknowledged.'})
 
 if __name__ == '__main__':
