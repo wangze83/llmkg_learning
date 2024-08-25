@@ -85,6 +85,11 @@
 </head>
 <body>
 
+<!-- Toast 容器 -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="toast-container"></div>
+</div>
+
 <!-- Modal -->
 <div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -177,16 +182,47 @@
 
 
 <script>
-        const easyMDE = new EasyMDE({
-            element: document.getElementById('gpt-response-editor'),
-            renderingConfig: {
-                singleLineBreaks: true,
-                codeSyntaxHighlighting: true,
-            },
-            minHeight: "300px",
-            maxHeight: "500px",
-            status: false,
-        });
+    function copyText() {
+        const textArea = document.getElementById('gpt-response-editor');
+        textArea.select();
+        document.execCommand('copy');
+        showToast('Text copied to clipboard!', 'success');
+    }
+
+    const easyMDE = new EasyMDE({
+        element: document.getElementById('gpt-response-editor'),
+        renderingConfig: {
+            singleLineBreaks: true,
+            codeSyntaxHighlighting: true,
+        },
+        minHeight: "300px",
+        maxHeight: "500px",
+        status: false,
+    });
+
+    // 通用函数显示 Toast
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+        const toastId = 'toast-' + Date.now();
+        const toastHTML = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        toastContainer.innerHTML += toastHTML;
+        const toastElement = new bootstrap.Toast(document.getElementById(toastId));
+        toastElement.show();
+
+        // 自动在3秒后隐藏
+        setTimeout(() => {
+            toastElement.hide();
+        }, 3000);
+    }
 
     // 页面加载时获取并显示学习状态
     document.addEventListener('DOMContentLoaded', function() {
@@ -256,7 +292,7 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    alert(data.message);
+                    showToast(data.message, 'success');
                     myModal.hide(); // 关闭模态框
                     const username = encodeURIComponent(formData.username); // 编码用户名以适应URL
                     window.location.href = `?username=${username}`; // 跳转到包含用户名参数的URL
@@ -351,12 +387,14 @@
     }
 
     function handleResponse(type) {
-        const prompt = document.getElementById('generated-prompt').innerText;
-        const response = document.getElementById('gpt-response').innerText;
-
         if(type === "bad") {
-            alert('Feedback received. Please try to regenerate Or We will try to improve the model later.');
+            showToast('Feedback received. Please try to regenerate Or We will try to improve the model later.', 'warning');
         } else {
+
+            // 获取页面上的prompt和response值
+            const prompt = document.getElementById('search-input').value;
+            const response = easyMDE.value();  // 获取GPT响应内容（markdown编辑器中的内容）
+
             // 处理好响应
             fetch(`/handle_response`, {
                 method: 'POST',
@@ -367,23 +405,14 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    alert(data.message);
+                    showToast(data.message, 'success');
                 });
         }
     }
 
-        document.getElementById('copy-btn').addEventListener('click', function() {
-            let responseText = document.getElementById('gpt-response-editor').value;
-            navigator.clipboard.writeText(responseText).then(function() {
-                alert('复制成功!');
-            }, function(err) {
-                console.error('复制失败: ', err);
-            });
-        });
-
-        document.getElementById('regenerate-btn').addEventListener('click', function() {
-            searchGPT()
-        });
+    function regeneratePrompt(){
+        searchGPT()
+    }
 
 </script>
 
