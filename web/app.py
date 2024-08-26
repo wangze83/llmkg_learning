@@ -8,7 +8,7 @@ import logging
 
 app = Flask(__name__)
 
-def query_openai_api(prompt):
+def query_openai_api(prompt, context=None):
     api_key = config['openai_api_key']  # 从环境变量中获取API密钥
     if not api_key:
         raise ValueError("Setting OPENAI_API_KEY")
@@ -20,12 +20,18 @@ def query_openai_api(prompt):
         "Content-Type": "application/json"
     }
 
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": prompt}
+    ]
+
+    # 兼容现有代码：如果有上下文，则将其包含在请求中
+    if context:
+        messages.append({"role": "user", "content": context})
+
     data = {
         "model": "gpt-4o-mini",  # 确保你使用的是正确的模型名称
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt}
-        ]
+        "messages": messages
     }
 
     proxies = {
@@ -113,6 +119,26 @@ def get_learning_state():
     else:
         return jsonify({'error': 'User not found'}), 404
 
+def get_user_knowledge_graph(username):
+    """从Neo4j获取指定用户的知识图谱."""
+    with get_db_connection() as session:
+        result = session.run("""
+            MATCH (u:User {username: $username})
+            RETURN u.course AS course, u.level AS level, u.goal AS goal, u.skills AS skills
+            LIMIT 1
+        """, username=username)
+        user_data = result.single()
+
+    if user_data:
+        return {
+            "course": user_data["course"],
+            "level": user_data["level"],
+            "goal": user_data["goal"],
+            "skills": user_data["skills"]
+        }
+    else:
+        return None
+
 @app.route('/generate_prompt', methods=['POST'])
 def generate_prompt():
     data = request.json
@@ -123,14 +149,7 @@ def generate_prompt():
     if not username:
         return jsonify({'error': 'Username is required'}), 400
 
-    # 从Neo4j获取用户的知识图谱
-    with get_db_connection() as session:
-        result = session.run("""
-            MATCH (u:User {username: $username})
-            RETURN u.course AS course, u.level AS level, u.goal AS goal, u.skills AS skills
-            LIMIT 1
-        """, username=username)
-        user_data = result.single()
+    user_data = get_user_knowledge_graph(username)
 
     if not user_data:
         return jsonify({'error': 'User not found'}), 404
@@ -192,6 +211,38 @@ def query_gpt():
     # 返回提取的内容
     return jsonify({'response': content})
 
+# 新增的 get_next_prompts 方法
+def get_next_prompts(previous_query_result, previous_prompt):
+    username = request.args.get('username')  # 从查询参数中获取username
+    user_data = get_user_knowledge_graph(username)
+
+    if not user_data:
+        return jsonify({'error': 'User not found'}), 404
+
+    context = f"Student's knowledge graph: {user_data}. Previous query result: {previous_query_result}. Based on this, generate 3 next prompts to guide the student in further learning."
+
+    # 使用 query_openai_api 方法发送包含上下文的请求
+    response = query_openai_api(previous_prompt, context)
+
+    # 假设返回的结果包含在 'choices' 中
+    next_prompts = response['choices'][0]['message']['content']
+    return next_prompts
+
+@app.route('/next_prompts', methods=['POST'])
+def next_prompts():
+    data = request.json
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    previous_query_result = data.get('previous_query_result')
+    previous_prompt = data.get('previous_prompt')
+
+    if not previous_query_result or not previous_prompt:
+        return jsonify({'error': 'Both previous_query_result and previous_prompt are required'}), 400
+
+    next_prompts = get_next_prompts(previous_query_result, previous_prompt)
+
+    return jsonify({'next_prompts': next_prompts})
 
 
 @app.route('/handle_response', methods=['POST'])

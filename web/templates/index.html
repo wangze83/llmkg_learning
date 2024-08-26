@@ -176,6 +176,11 @@
     </div>
 </div>
 
+<div id="next-prompts-container">
+    <!-- Next prompts will be displayed here -->
+</div>
+
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
 
@@ -348,6 +353,8 @@
     function searchGPT() {
         const prompt = document.getElementById('generated-prompt').innerText;
         const gptResponseSection = document.getElementById('gpt-response-section');
+        const username = document.getElementById('username').value;
+
         gptResponseSection.style.display = 'block';
 
         fetch('/query_gpt', {
@@ -380,6 +387,8 @@
 
                 // 启动逐步展示
                 displayNextSegment();
+
+                fetchNextPrompts(data.response, prompt, username)
             })
             .catch(error => {
                 console.error('Error fetching GPT response:', error);
@@ -412,6 +421,43 @@
 
     function regeneratePrompt(){
         searchGPT()
+    }
+
+    // Function to fetch next prompts from the backend
+    async function fetchNextPrompts(previousQueryResult, previousPrompt, username) {
+        try {
+            const response = await fetch(`/next_prompts?username=${username}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    previous_query_result: previousQueryResult,
+                    previous_prompt: previousPrompt
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            displayNextPrompts(data.next_prompts);
+        } catch (error) {
+            console.error('Error fetching next prompts:', error);
+        }
+    }
+
+    // Function to display the prompts on the UI
+    function displayNextPrompts(prompts) {
+        const promptsContainer = document.getElementById('next-prompts-container');
+        promptsContainer.innerHTML = '';
+
+        prompts.forEach(prompt => {
+            const promptElement = document.createElement('p');
+            promptElement.textContent = prompt;
+            promptsContainer.appendChild(promptElement);
+        });
     }
 
 </script>
