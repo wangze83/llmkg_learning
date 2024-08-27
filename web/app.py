@@ -371,24 +371,86 @@ def handle_response():
     return jsonify({'message': 'Response acknowledged.'})
 
 @app.route('/get_knowledge_graph', methods=['GET'])
+@app.route('/get_knowledge_graph', methods=['GET'])
 def get_knowledge_graph():
     username = request.args.get('username')
     user_data = get_user_knowledge_graph(username)
 
     if user_data:
-        # 根据实际的数据结构返回知识图谱数据
-        knowledge_graph = {
-            "labels": ["Course", "Level", "Goal", "Skills"],
-            "values": [
-                len(user_data.get("course", "")),
-                len(user_data.get("level", "")),
-                len(user_data.get("goal", "")),
-                len(user_data.get("skills", ""))
-            ]
-        }
-        return jsonify({'knowledge_graph': knowledge_graph})
+        # 构建节点
+        nodes = [
+            {
+                "data": {
+                    "id": "User",
+                    "label": username
+                }
+            },
+            {
+                "data": {
+                    "id": "Course",
+                    "label": user_data.get("course", "")
+                }
+            },
+            {
+                "data": {
+                    "id": "Level",
+                    "label": user_data.get("level", "")
+                }
+            },
+            {
+                "data": {
+                    "id": "Goal",
+                    "label": user_data.get("goal", "")
+                }
+            },
+            {
+                "data": {
+                    "id": "Skills",
+                    "label": user_data.get("skills", "")
+                }
+            }
+        ]
+
+        # 构建边（将所有节点连接到 User 节点）
+        edges = [
+            {
+                "data": {
+                    "id": f"{username}_to_Course",
+                    "source": "User",
+                    "target": "Course"
+                }
+            },
+            {
+                "data": {
+                    "id": f"{username}_to_Level",
+                    "source": "User",
+                    "target": "Level"
+                }
+            },
+            {
+                "data": {
+                    "id": f"{username}_to_Goal",
+                    "source": "User",
+                    "target": "Goal"
+                }
+            },
+            {
+                "data": {
+                    "id": f"{username}_to_Skills",
+                    "source": "User",
+                    "target": "Skills"
+                }
+            }
+        ]
+
+        return jsonify({
+            "nodes": nodes,
+            "edges": edges
+        })
     else:
         return jsonify({'error': 'User not found'}), 404
+
+
 
 
 if __name__ == '__main__':

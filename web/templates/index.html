@@ -80,18 +80,38 @@
         #search-section, #prompt-section, #gpt-response-section {
             margin-top: 20px;
         }
-
-        #knowledge-graph-container {
-            margin-top: 20px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
         .fade-in {
             opacity: 0;
             transition: opacity 1s ease-in-out;
         }
         .fade-in.show {
             opacity: 1;
+        }
+        #knowledge-graph {
+            width: 100%;
+            height: 500px;  /* 调整为适合的高度 */
+            border: 1px solid #ddd;
+        }
+
+
+        #knowledge-graph-container {
+            margin-top: 20px;
+            max-width: 600px;
+            height: 400px;
+            margin: 0 auto;
+        }
+        .node circle {
+            fill: #3498db;
+            stroke: #fff;
+            stroke-width: 3px;
+        }
+        .node text {
+            fill: #333;
+            font: 12px sans-serif;
+        }
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
         }
     </style>
 </head>
@@ -145,14 +165,13 @@
                     <button type="button" class="btn btn-primary" onclick="saveForm()">Save</button>
                 </form>
             </div>
-            <div id="knowledge-graph-container" class="card mt-4 p-3 fade-in">
-                <h5>Personal Knowledge Graph</h5>
-                <canvas id="knowledge-graph"></canvas>
-            </div>
         </div>
     </div>
 </div>
 
+<div id="knowledge-graph-container" class="card mt-4 p-3 fade-in">
+    <div id="knowledge-graph"></div>  <!-- 改为 div 元素 -->
+</div>
 <!-- 学习状态显示区域 -->
 <div id="learning-status" class="card text-center mx-auto mt-4 p-3" style="max-width: 600px;">
     <h5>Learning Status</h5>
@@ -200,7 +219,10 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.8.0/dist/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/graphlib/2.1.8/graphlib.min.js"></script>
+<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.2.1/cytoscape-dagre.min.js"></script>
+
 
 
 
@@ -479,56 +501,72 @@
         });
     }
 
-    // 新增的个性知识图谱绘制代码
-    function renderKnowledgeGraph(data) {
-        const ctx = document.getElementById('knowledge-graph').getContext('2d');
-        new Chart(ctx, {
-            type: 'radar',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: 'Skill Level',
-                    data: data.values,
-                    fill: true,
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    pointBackgroundColor: 'rgba(54, 162, 235, 1)'
-                }]
-            },
-            options: {
-                scales: {
-                    r: {
-                        ticks: {
-                            beginAtZero: true
-                        }
+    cytoscape.use(cytoscapeDagre);
+
+    async function fetchKnowledgeGraph(username) {
+        try {
+            const response = await fetch(`/get_knowledge_graph?username=${username}`);
+            const data = await response.json();
+
+            console.log("Fetched data:", data);  // Debugging output
+
+            if (!data.nodes || !data.edges) {
+                console.error("Knowledge graph data is empty or undefined.");
+                return;
+            }
+
+            renderKnowledgeGraph(data);
+        } catch (error) {
+            console.error("Error fetching knowledge graph:", error);
+        }
+    }
+
+    function renderKnowledgeGraph(graphData) {
+        const cy = cytoscape({
+            container: document.getElementById('knowledge-graph'),
+            elements: [
+                ...graphData.nodes,
+                ...graphData.edges
+            ],
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'background-color': '#3498db',
+                        'label': 'data(label)',
+                        'color': '#333',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'font-size': '12px',
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': '#999',
+                        'target-arrow-color': '#999',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
                     }
                 }
+            ],
+            layout: {
+                name: 'cose',
+                directed: true,
+                padding: 10
+
             }
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const username = document.getElementById('username').value; // 假设用户名存储在隐藏字段中
-        fetch(`/get_knowledge_graph?username=${username}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.knowledge_graph) {
-                    renderKnowledgeGraph(data.knowledge_graph);
-                    document.getElementById('knowledge-graph-container').classList.add('show');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
 
-        // 渐入渐出动画示例
-        anime({
-            targets: '.fade-in',
-            opacity: [0, 1],
-            duration: 1000,
-            easing: 'easeInOutQuad'
-        });
-    });
+
+
+
+
+    username = document.getElementById('username').value;
+    fetchKnowledgeGraph(username);
 
     // 渐入渐出动画示例
     document.addEventListener('DOMContentLoaded', function() {
