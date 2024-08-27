@@ -7,9 +7,8 @@ import os
 import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-
-
 app = Flask(__name__)
+
 
 def query_openai_api(prompt, context=None):
     api_key = config['openai_api_key']
@@ -22,34 +21,33 @@ def query_openai_api(prompt, context=None):
         "Content-Type": "application/json"
     }
 
-    # 系统消息和用户消息的结构化处理
     messages = [{"role": "system", "content": "You are a helpful assistant."}]
 
     if context:
-        # 如果有上下文，将其以系统消息的形式包含
         messages.append({"role": "system", "content": f"Context: {context}"})
 
-    # 在用户提示中要求简短的回答
     prompt_with_length_limit = f"{prompt} Please keep your response short and concise."
 
     messages.append({"role": "user", "content": prompt_with_length_limit})
 
     data = {
-        "model": config.get("model_name", "gpt-4o-mini"),  # 动态获取模型名称
+        "model": config.get("model_name", "gpt-4o-mini"),
         "messages": messages,
-        "max_tokens": 150  # 限制最大生成长度，您可以根据需要调整这个值
+        "max_tokens": 150
     }
 
-    proxies = {
-        "http": "http://host.docker.internal:1087",
-        "https": "http://host.docker.internal:1087"
-    }
+    if config.get("use_proxies", False):
+        proxies = {
+            "http": config.get("proxy_http"),
+            "https": config.get("proxy_https")
+        }
+    else:
+        proxies = None
 
     try:
-        # 设置超时，防止请求挂起
         response = requests.post(url, headers=headers, json=data, proxies=proxies, timeout=10)
 
-        response.raise_for_status()  # 检查HTTP错误
+        response.raise_for_status()
         return response.json()
 
     except requests.exceptions.Timeout:
@@ -71,6 +69,7 @@ def load_config():
 
     return config
 
+
 config = load_config()
 
 # Initialize Neo4j driver
@@ -79,12 +78,14 @@ neo4j_driver = neo4j.GraphDatabase.driver(
     auth=("neo4j", "password")
 )
 
+
 def get_db_connection():
     return neo4j_driver.session()
 
+
 @app.route('/')
 def index():
-    username = request.args.get('username')  # 从URL中获取username参数
+    username = request.args.get('username')
     user_data = {}
 
     if username:
@@ -100,6 +101,7 @@ def index():
 
     return render_template('index.html', user_data=user_data)
 
+
 @app.route('/save_form', methods=['POST'])
 def save_form():
     data = request.json
@@ -107,7 +109,8 @@ def save_form():
         session.run("""
         MERGE (u:User {username: $username})
         SET u.course = $course, u.level = $level, u.goal = $goal, u.skills = $skills
-        """, username=data['username'], course=data['course'], level=data['level'], goal=data['goal'], skills=data['skills'])
+        """, username=data['username'], course=data['course'], level=data['level'], goal=data['goal'],
+                    skills=data['skills'])
     return jsonify({'message': 'Form saved successfully'})
 
 
@@ -132,6 +135,7 @@ def get_learning_state():
     else:
         return jsonify({'error': 'User not found'}), 404
 
+
 def get_user_knowledge_graph(username):
     with get_db_connection() as session:
         result = session.run("""
@@ -150,6 +154,7 @@ def get_user_knowledge_graph(username):
         }
     else:
         return None
+
 
 @app.route('/generate_prompt', methods=['POST'])
 def generate_prompt():
@@ -175,7 +180,6 @@ def generate_prompt():
 
     keywords = split_keywords(data['input'])
 
-    # 生成分层的 Prompt
     level = knowledge_graph["level"]
     if level == "beginner":
         template = "Explain the basics of {keywords} in a simple way, assuming the student is just starting to learn {course}."
@@ -186,14 +190,12 @@ def generate_prompt():
     else:
         template = "Describe {keywords}."
 
-    # 基于知识图谱的深度挖掘，构建更丰富的内容
     if knowledge_graph['skills']:
         template += " Also, consider the student's prior knowledge in {skills}."
 
-    # 生成 Prompt
-    prompt = template.format(keywords=", ".join(keywords), course=knowledge_graph["course"], skills=", ".join(knowledge_graph["skills"]))
+    prompt = template.format(keywords=", ".join(keywords), course=knowledge_graph["course"],
+                             skills=", ".join(knowledge_graph["skills"]))
 
-    # 增强语义上下文，考虑前后的学习历史或对话记录
     previous_context = data.get('search-input', '')
     if previous_context:
         prompt = f"Previously, the student was learning about {previous_context}. Now, {prompt}"
@@ -202,17 +204,14 @@ def generate_prompt():
 
 
 def split_keywords(user_input):
-    # 优先使用TF-IDF进行关键词提取
     keywords = extract_keywords_tfidf(user_input)
     logging.debug(f"TF-IDF extracted keywords: {keywords}")
 
-    # 如果TF-IDF提取的关键词数量不足，可以选择调用OpenAI API进行补充
-    # if len(keywords) < 3:  # 根据需求设定阈值
+    # if len(keywords) < 3:
     #     logging.debug("TF-IDF extraction resulted in fewer keywords than expected. Falling back to OpenAI API.")
     #     openai_keywords = query_openai_api(f"Extract keywords from the following text: '{user_input}'")
     #     logging.debug(f"OpenAI extracted keywords: {openai_keywords}")
     #
-    #     # 合并TF-IDF和OpenAI提取的关键词
     #     keywords = list(set(keywords).union(set(openai_keywords.split(','))))
 
     logging.debug(f"Final extracted keywords: {keywords}")
@@ -220,31 +219,29 @@ def split_keywords(user_input):
 
 
 def extract_keywords_tfidf(text, top_n=5):
-    # TF-IDF关键词提取
     vectorizer = TfidfVectorizer(stop_words='english', max_features=top_n)
     tfidf_matrix = vectorizer.fit_transform([text])
     keywords = vectorizer.get_feature_names_out()
     return keywords
 
+
 # 配置日志
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 @app.route('/query_gpt', methods=['POST'])
 def query_gpt():
     data = request.json
     prompt = data['prompt']
-    username = data.get('username')  # 假设前端会传递username
+    username = data.get('username')
 
-    # 调用 OpenAI API 获取初始响应
     response = query_openai_api(prompt)
     content = response['choices'][0]['message']['content']
 
-    # 获取用户的知识图谱
     user_data = get_user_knowledge_graph(username)
     if not user_data:
         return jsonify({'error': 'User not found'}), 404
 
-    # 验证生成的内容
     verification_prompt = (
         "You are a helpful assistant. A student with the following knowledge graph is learning:"
         f"Course: {user_data['course']}, Level: {user_data['level']}, Goal: {user_data['goal']}, "
@@ -255,15 +252,15 @@ def query_gpt():
     verification_response = query_openai_api(verification_prompt)
     verification_content = verification_response['choices'][0]['message']['content']
 
-    # 判断验证结果
     if "accurate" in verification_content.lower() and "well-structured" in verification_content.lower():
         return jsonify({'response': content})
     else:
-        return jsonify({'response': 'The generated content may not be accurate or well-structured. Please revise the prompt or try again.'})
+        return jsonify({
+            'response': 'The generated content may not be accurate or well-structured. Please revise the prompt or try again.'})
 
 
 def get_next_prompts(previous_query_result, previous_prompt):
-    username = request.args.get('username')  # 从查询参数中获取username
+    username = request.args.get('username')
     user_data = get_user_knowledge_graph(username)
 
     if not user_data:
@@ -274,30 +271,31 @@ def get_next_prompts(previous_query_result, previous_prompt):
     skills = user_data.get("skills", [])
     goal = user_data.get("goal", "")
 
-    # 根据学生的学习水平和目标生成不同的提示模板
     if level == "beginner":
-        template = ("A beginner student studying {course} with the goal of {goal} received the following result: '{previous_query_result}'. "
-                    "Generate 3 simple, foundational prompts that help the student reinforce basic concepts and move forward.")
+        template = (
+            "A beginner student studying {course} with the goal of {goal} received the following result: '{previous_query_result}'. "
+            "Generate 3 simple, foundational prompts that help the student reinforce basic concepts and move forward.")
     elif level == "intermediate":
-        template = ("A student with intermediate knowledge in {course} and aiming for {goal} got the following result: '{previous_query_result}'. "
-                    "Generate 3 prompts that challenge the student to deepen their understanding and apply their knowledge in practical scenarios.")
+        template = (
+            "A student with intermediate knowledge in {course} and aiming for {goal} got the following result: '{previous_query_result}'. "
+            "Generate 3 prompts that challenge the student to deepen their understanding and apply their knowledge in practical scenarios.")
     elif level == "advanced":
-        template = ("An advanced student proficient in {skills} and studying {course} with the goal of {goal} got the following result: '{previous_query_result}'. "
-                    "Generate 3 complex, high-level prompts that push the student towards mastery and research-level understanding.")
+        template = (
+            "An advanced student proficient in {skills} and studying {course} with the goal of {goal} got the following result: '{previous_query_result}'. "
+            "Generate 3 complex, high-level prompts that push the student towards mastery and research-level understanding.")
     else:
-        template = ("Based on the previous result: '{previous_query_result}', generate 3 next prompts for the student's further learning.")
+        template = (
+            "Based on the previous result: '{previous_query_result}', generate 3 next prompts for the student's further learning.")
 
-    # 构建最终的 prompt
-    prompt = template.format(previous_query_result=previous_query_result, course=course, skills=", ".join(skills), goal=goal)
+    prompt = template.format(previous_query_result=previous_query_result, course=course, skills=", ".join(skills),
+                             goal=goal)
 
-    # 使用 query_openai_api 方法发送包含上下文的请求
     response = query_openai_api(previous_prompt, prompt)
 
-    # 假设返回的结果包含在 'choices' 中
     if 'choices' in response and len(response['choices']) > 0:
         next_prompts = response['choices'][0]['message']['content']
     else:
-        raise Exception("未能从OpenAI API中获取下一步提示")
+        raise Exception("Failed to get next step hint from OpenAI API")
 
     return next_prompts
 
@@ -329,27 +327,25 @@ def handle_response():
         logging.debug(f"Content to process: {content}")
 
         try:
-            # 提取关键字
             username = data['username']
             keywords = split_keywords(content)
             logging.debug(f"Extracted keywords: {keywords}")
 
             with get_db_connection() as session:
-                # 获取现有技能列表
                 existing_skills_result = session.run("""
                 MATCH (u:User {username: $username})
                 RETURN u.skills AS skills
                 """, username=username)
 
                 existing_skills_record = existing_skills_result.single()
-                existing_skills = existing_skills_record['skills'].split(', ') if existing_skills_record and existing_skills_record['skills'] else []
+                existing_skills = existing_skills_record['skills'].split(', ') if existing_skills_record and \
+                                                                                  existing_skills_record[
+                                                                                      'skills'] else []
 
-                # 筛选出新的技能
                 new_keywords = [keyword for keyword in keywords if keyword not in existing_skills]
                 logging.debug(f"New keywords to add: {new_keywords}")
 
                 if new_keywords:
-                    # 更新数据库，添加新技能
                     session.run("""
                     MATCH (u:User {username: $username})
                     SET u.skills = COALESCE(u.skills, '') + CASE 
@@ -370,14 +366,13 @@ def handle_response():
     logging.debug("Received response type is not 'good'. Acknowledging response.")
     return jsonify({'message': 'Response acknowledged.'})
 
-@app.route('/get_knowledge_graph', methods=['GET'])
+
 @app.route('/get_knowledge_graph', methods=['GET'])
 def get_knowledge_graph():
     username = request.args.get('username')
     user_data = get_user_knowledge_graph(username)
 
     if user_data:
-        # 构建节点
         nodes = [
             {
                 "data": {
@@ -411,7 +406,6 @@ def get_knowledge_graph():
             }
         ]
 
-        # 构建边（将所有节点连接到 User 节点）
         edges = [
             {
                 "data": {
@@ -449,8 +443,6 @@ def get_knowledge_graph():
         })
     else:
         return jsonify({'error': 'User not found'}), 404
-
-
 
 
 if __name__ == '__main__':

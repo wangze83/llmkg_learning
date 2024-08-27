@@ -6,49 +6,76 @@
     <title>Learning Assistant</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
 
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            color: #495057;
+            margin: 20px;
+        }
+
+        .header, .main-content, .footer {
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #343a40;
+            text-align: center;
+        }
+
         #main-content {
-            max-width: 600px;
+            max-width: 750px;
             margin: 0 auto;
-        }
-        #gpt-response-editor h1 {
-            font-size: 2em;
-            margin-top: 0.67em;
-            margin-bottom: 0.67em;
-        }
-
-        #gpt-response-editor strong {
-            font-weight: bold;
-        }
-
-        #gpt-response-editor em {
-            font-style: italic;
-        }
-
-        #gpt-response-editor ul {
-            list-style-type: disc;
-            margin-left: 1.5em;
-        }
-
-
-        #gpt-response {
-            background-color: #f1f1f1;
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 10px;
-            word-wrap: break-word;
-        }
-
-        #prompt-section p,
-        #gpt-response p {
-            margin: 0;
-            padding: 5px 0;
         }
 
         .card {
             border: none;
             border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #knowledge-graph-container {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            width: 434px;
+            height: 237px;
+        }
+
+
+        #knowledge-graph {
+            width: 400px;
+            height: 200px;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+        }
+
+        #learning-status {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        #gpt-response-editor {
+            border-radius: 10px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            min-height: 300px;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
         }
 
         button {
@@ -59,160 +86,182 @@
             margin-right: 0;
         }
 
-        /* 去掉按钮的宽度限制，使按钮一行排列 */
-        .btn-group {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
+        #prompt-section p,
+        #gpt-response p {
+            margin: 0;
+            padding: 5px 0;
         }
 
-        /* 修改 #learning-status 的样式 */
-        #learning-status {
-            margin-top: 20px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            padding: 15px;
-            background-color: #f9f9f9;
-            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-            display: none;
-        }
-
-        #search-section, #prompt-section, #gpt-response-section {
-            margin-top: 20px;
-        }
         .fade-in {
             opacity: 0;
             transition: opacity 1s ease-in-out;
         }
+
         .fade-in.show {
             opacity: 1;
         }
-        #knowledge-graph {
-            width: 100%;
-            height: 500px;  /* 调整为适合的高度 */
-            border: 1px solid #ddd;
-        }
 
-
-        #knowledge-graph-container {
-            margin-top: 20px;
-            max-width: 600px;
-            height: 400px;
-            margin: 0 auto;
-        }
         .node circle {
             fill: #3498db;
             stroke: #fff;
             stroke-width: 3px;
         }
+
         .node text {
             fill: #333;
             font: 12px sans-serif;
         }
+
         .link {
             stroke: #999;
             stroke-opacity: 0.6;
         }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .row {
+                flex-direction: column;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+
     </style>
 </head>
 <body>
 
-<!-- Toast 容器 -->
+<!-- Toast container -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div id="toast-container"></div>
 </div>
 
-<!-- Modal -->
-<div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="formModalLabel">Personal Knowledge Graph Setup</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="user-form">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" value="{{ user_data.username }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="course" class="form-label">Course</label>
-                        <input type="text" class="form-control" id="course" value="{{ user_data.course }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="goal" class="form-label">Learning Goal</label>
-                        <input type="text" class="form-control" id="goal" value="{{ user_data.goal }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Skill Level</label>
-                        <div>
-                            <input type="radio" id="beginner" name="level" value="beginner"
-                                   {% if user_data.level == 'beginner' %} checked {% endif %} required>
-                            <label for="beginner">Beginner</label>
-                            <input type="radio" id="intermediate" name="level" value="intermediate"
-                                   {% if user_data.level == 'intermediate' %} checked {% endif %}>
-                            <label for="intermediate">Intermediate</label>
-                            <input type="radio" id="advanced" name="level" value="advanced"
-                                   {% if user_data.level == 'advanced' %} checked {% endif %}>
-                            <label for="advanced">Advanced</label>
+
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-graduation-cap"></i> Learning Assistant</h1>
+    </div>
+    <!-- Main Content Section -->
+    <div class="main-content">
+        <div class="row">
+
+
+            <!-- Modal -->
+            <div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="formModalLabel">Personal Knowledge Graph Setup</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="user-form">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="username"
+                                           value="{{ user_data.username }}" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="course" class="form-label">Course</label>
+                                    <input type="text" class="form-control" id="course" value="{{ user_data.course }}"
+                                           required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="goal" class="form-label">Learning Goal</label>
+                                    <input type="text" class="form-control" id="goal" value="{{ user_data.goal }}"
+                                           required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Skill Level</label>
+                                    <div>
+                                        <input type="radio" id="beginner" name="level" value="beginner"
+                                               {% if user_data.level== 'beginner' %} checked {% endif %} required>
+                                        <label for="beginner">Beginner</label>
+                                        <input type="radio" id="intermediate" name="level" value="intermediate"
+                                               {% if user_data.level== 'intermediate' %} checked {% endif %}>
+                                        <label for="intermediate">Intermediate</label>
+                                        <input type="radio" id="advanced" name="level" value="advanced"
+                                               {% if user_data.level== 'advanced' %} checked {% endif %}>
+                                        <label for="advanced">Advanced</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="skills" class="form-label">Skills acquired</label>
+                                    <input type="text" class="form-control" id="skills" value="{{ user_data.skills }}"
+                                           required>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="saveForm()">Save</button>
+                            </form>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="skills" class="form-label">Skills acquired</label>
-                        <input type="text" class="form-control" id="skills" value="{{ user_data.skills }}" required>
-                    </div>
-                    <button type="button" class="btn btn-primary" onclick="saveForm()">Save</button>
-                </form>
+                </div>
             </div>
-        </div>
-    </div>
-</div>
+            <div class="row justify-content-center" style="margin-left: 45px;">
 
-<div id="knowledge-graph-container" class="card mt-4 p-3 fade-in">
-    <div id="knowledge-graph"></div>  <!-- 改为 div 元素 -->
-</div>
-<!-- 学习状态显示区域 -->
-<div id="learning-status" class="card text-center mx-auto mt-4 p-3" style="max-width: 600px;">
-    <h5>Learning Status</h5>
-    <p id="status-content">Your current learning progress will be displayed here.</p>
-</div>
-<p></p>
+                <div class="col-md-5">
+                    <div id="learning-status" class="card text-center mx-auto mt-4 p-3" style="max-width: 480px;">
+                        <h5><i class="fas fa-chart-line"></i> Learning Status</h5>
+                        <p id="status-content">Your current learning progress will be displayed here.</p>
+                    </div>
+                </div>
 
-<div id="main-content">
-    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#formModal">
-        View/Edit Form
-    </button>
+                <div class="col-md-5">
+                    <div id="knowledge-graph-container" class="card mt-4 p-3 fade-in">
+                        <div id="knowledge-graph"></div>
+                    </div>
+                </div>
+            </div>
+            <p></p>
 
-    <div id="search-section" class="mt-4">
-        <input type="text" id="search-input" class="form-control" placeholder="Enter your learning goal...">
-        <button class="btn btn-secondary mt-2" onclick="generatePrompt()">Generate Prompt</button>
-    </div>
+            <div id="main-content">
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#formModal">
+                    <i class="fas fa-edit"></i> View/Edit Form
+                </button>
 
-    <div id="prompt-section" class="card mt-4 p-3" style="display: none;">
-        <p>Generated Prompt:</p>
-        <p id="generated-prompt" class="bg-light p-2 rounded"></p>
-        <button class="btn btn-info" onclick="searchGPT()">Search</button>
-    </div>
+                <div id="search-section" class="mt-4">
+                    <input type="text" id="search-input" class="form-control" placeholder="Enter your learning goal...">
+                    <button class="btn btn-secondary mt-2" onclick="generatePrompt()">Generate Prompt</button>
+                </div>
 
-    <div id="gpt-response-section" class="mt-4">
-        <!-- 使用卡片和对话气泡样式 -->
-        <textarea id="gpt-response-editor" class="card p-3 bg-light">
+                <div id="prompt-section" class="card mt-4 p-3" style="display: none;">
+                    <p>Generated Prompt:</p>
+                    <p id="generated-prompt" class="bg-light p-2 rounded"></p>
+                    <button class="btn btn-info" onclick="searchGPT()"><i class="fas fa-search"></i>Search</button>
+                </div>
+
+                <div id="gpt-response-section" class="mt-4">
+                    <textarea id="gpt-response-editor" class="card p-3 bg-light">
             Creating a learning path for Natural Language Processing (NLP) involves a structured approach to understanding both the foundational concepts of computer science and the specific techniques and tools used in NLP. Since you mentioned having an intermediate level understanding in computer science (CS1), I’ll provide a comprehensive learning path that builds on that knowledge. ### **Learning Path for Natural Language Processing (NLP)** #### **1. Strengthen Your Foundations** - **Programming Skills:** - **Python:** Learn essential Python libraries for data manipulation (NumPy, pandas) and visualization (Matplotlib, Seaborn). - **Data Structures & Algorithms:** - Understand basic data structures (lists, queues, stacks, trees) and algorithms (sorting, searching). - **Mathematics:** - Brush up on linear algebra, probability, and statistics, as they are fundamental in NLP. #### **2. Get Acquainted with Text Processing** - **Text Preprocessing Techniques:** - Learn about tokenization, stemming, lemmatization, stopword removal, and text normalization. - **Regular Expressions:** - Practice using regular expressions for pattern matching and text manipulation.
         </textarea>
 
-        <!-- 将按钮放在一行中 -->
-        <div class="btn-group mt-3">
-            <button class="btn btn-success" onclick="copyText()">Copy</button>
-            <button class="btn btn-warning" onclick="regeneratePrompt()">Regenerate</button>
-            <button class="btn btn-danger" onclick="handleResponse('bad')">Bad Response</button>
-            <button class="btn btn-primary" onclick="handleResponse('good')">Good Response</button>
+                    <div class="btn-group mt-3">
+                        <button class="btn btn-success" onclick="copyText()"><i class="fas fa-copy"></i> Copy</button>
+                        <button class="btn btn-warning" onclick="regeneratePrompt()" style="--bs-btn-color:white"><i
+                                class="fas fa-sync-alt"></i> Regenerate
+                        </button>
+                        <button class="btn btn-danger" onclick="handleResponse('bad')"><i
+                                class="fas fa-thumbs-down"></i> Bad Response
+                        </button>
+                        <button class="btn btn-primary" onclick="handleResponse('good')"><i
+                                class="fas fa-thumbs-up"></i> Good Response
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="next-prompts-container">
+                <!-- Next prompts will be displayed here -->
+            </div>
+            <div class="footer text-center mt-4">
+                <p>&copy; 2024 Learning Assistant. All rights reserved.</p>
+            </div>
         </div>
     </div>
-</div>
-
-<div id="next-prompts-container">
-    <!-- Next prompts will be displayed here -->
 </div>
 
 
@@ -222,9 +271,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/graphlib/2.1.8/graphlib.min.js"></script>
 <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.2.1/cytoscape-dagre.min.js"></script>
-
-
-
 
 
 <script>
@@ -246,7 +292,6 @@
         status: false,
     });
 
-    // 通用函数显示 Toast
     function showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toast-container');
         const toastId = 'toast-' + Date.now();
@@ -264,23 +309,21 @@
         const toastElement = new bootstrap.Toast(document.getElementById(toastId));
         toastElement.show();
 
-        // 自动在3秒后隐藏
         setTimeout(() => {
             toastElement.hide();
         }, 3000);
     }
 
-    // 页面加载时获取并显示学习状态
-    document.addEventListener('DOMContentLoaded', function() {
-        const username = document.getElementById('username').value; // 假设用户名存储在隐藏字段中
+    document.addEventListener('DOMContentLoaded', function () {
+        const username = document.getElementById('username').value;
         fetch(`/get_learning_state?username=${username}`)
             .then(response => response.json())
             .then(data => {
                 if (data.learning_state) {
                     const learningStatusDiv = document.getElementById('learning-status');
-                    learningStatusDiv.style.display = "block"; // 显示学习状态 div
+                    learningStatusDiv.style.display = "block";
                     learningStatusDiv.innerHTML = `
-                    <h3>Current learning status</h3>
+                    <h3><i class="fas fa-chart-line"></i> Current learning status</h3>
                     <p>Course: ${data.learning_state.course}</p>
                     <p>Skill Level: ${data.learning_state.level}</p>
                     <p>Learning Goal: ${data.learning_state.goal}</p>
@@ -298,9 +341,9 @@
     function saveForm() {
         const form = document.getElementById('user-form');
         const fields = [
-            { id: 'username', message: 'Please enter your username.' },
-            { id: 'course', message: 'Please enter the course name.' },
-            { id: 'goal', message: 'Please enter your learning goal.' }
+            {id: 'username', message: 'Please enter your username.'},
+            {id: 'course', message: 'Please enter the course name.'},
+            {id: 'goal', message: 'Please enter your learning goal.'}
         ];
 
         let formValid = true;
@@ -312,7 +355,7 @@
                     input.setCustomValidity(field.message);
                     formValid = false;
                 } else {
-                    input.setCustomValidity(''); // 清除自定义提示语
+                    input.setCustomValidity('');
                 }
             } else {
                 console.error(`Element with ID '${field.id}' not found.`);
@@ -339,12 +382,12 @@
                 .then(response => response.json())
                 .then(data => {
                     showToast(data.message, 'success');
-                    myModal.hide(); // 关闭模态框
-                    const username = encodeURIComponent(formData.username); // 编码用户名以适应URL
-                    window.location.href = `?username=${username}`; // 跳转到包含用户名参数的URL
+                    myModal.hide();
+                    const username = encodeURIComponent(formData.username);
+                    window.location.href = `?username=${username}`;
                 });
         } else {
-            form.reportValidity(); // 显示自定义提示语
+            form.reportValidity();
         }
     }
 
@@ -370,7 +413,7 @@
 
     function generatePrompt() {
         const userInput = document.getElementById('search-input').value;
-        const username = document.getElementById('username').value;  // 获取username
+        const username = document.getElementById('username').value;
 
         // 调用服务器拆分关键词并生成提示
         fetch('/generate_prompt', {
@@ -380,7 +423,7 @@
             },
             body: JSON.stringify({
                 input: userInput,
-                username: username  // 将username附加到请求体
+                username: username
             })
         })
             .then(response => response.json())
@@ -403,14 +446,13 @@
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ prompt: prompt })
+            body: JSON.stringify({prompt: prompt})
         })
             .then(response => response.json())
             .then(data => {
                 const gptResponseDiv = document.getElementById('gpt-response-editor');
-                gptResponseDiv.innerText = ''; // 清空以前的内容
+                gptResponseDiv.innerText = '';
 
-                // 分割响应内容（按句号、问号、感叹号）
                 const segments = data.response.split(/(?<=[。！？])\s*/);
                 let currentIndex = 0;
 
@@ -421,12 +463,10 @@
                         gptResponseDiv.appendChild(p);
                         currentIndex++;
 
-                        // 每隔1秒显示下一个段落或句子
                         setTimeout(displayNextSegment, 1000);
                     }
                 }
 
-                // 启动逐步展示
                 displayNextSegment();
 
                 fetchNextPrompts(data.response, prompt, username)
@@ -437,15 +477,13 @@
     }
 
     function handleResponse(type) {
-        if(type === "bad") {
+        if (type === "bad") {
             showToast('Feedback received. Please try to regenerate Or We will try to improve the model later.', 'warning');
         } else {
 
-            // 获取页面上的prompt和response值
             const prompt = document.getElementById('search-input').value;
-            const response = easyMDE.value();  // 获取GPT响应内容（markdown编辑器中的内容）
+            const response = easyMDE.value();
 
-            // 处理好响应
             fetch(`/handle_response`, {
                 method: 'POST',
                 headers: {
@@ -460,7 +498,7 @@
         }
     }
 
-    function regeneratePrompt(){
+    function regeneratePrompt() {
         searchGPT()
     }
 
@@ -532,20 +570,33 @@
                 {
                     selector: 'node',
                     style: {
-                        'background-color': '#3498db',
+                        'background-color': function (ele) {
+                            switch (ele.data('id')) {
+                                case 'Course':
+                                    return '#3498db';
+                                case 'Level':
+                                    return '#2ecc71';
+                                case 'Goal':
+                                    return '#e74c3c';
+                                case 'Skills':
+                                    return '#f1c40f';
+                                default:
+                                    return '#9b59b6';
+                            }
+                        },
                         'label': 'data(label)',
-                        'color': '#333',
+                        'color': '#ffffff',
                         'text-valign': 'center',
                         'text-halign': 'center',
-                        'font-size': '12px',
+                        'font-size': '14px',
                     }
                 },
                 {
                     selector: 'edge',
                     style: {
                         'width': 2,
-                        'line-color': '#999',
-                        'target-arrow-color': '#999',
+                        'line-color': '#7f8c8d',
+                        'target-arrow-color': '#7f8c8d',
                         'target-arrow-shape': 'triangle',
                         'curve-style': 'bezier',
                     }
@@ -555,21 +606,15 @@
                 name: 'cose',
                 directed: true,
                 padding: 10
-
             }
         });
     }
 
 
-
-
-
-
     username = document.getElementById('username').value;
     fetchKnowledgeGraph(username);
 
-    // 渐入渐出动画示例
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         anime({
             targets: '.fade-in',
             opacity: [0, 1],

@@ -1,3 +1,7 @@
 {
-  "openai_api_key": "XXXXXX"
+  "openai_api_key": "xxxx",
+  "use_proxies": false,
+  "proxy_http": "xxxx",
+  "proxy_https": "xxxx",
+  "model_name": "gpt-4o-mini"
 }
