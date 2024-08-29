@@ -1,0 +1,207 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f9;
+    color: #495057;
+    margin: 20px;
+}
+
+.header, .main-content, .footer {
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    font-size: 28px;
+    color: #343a40;
+    text-align: center;
+}
+
+#main-content {
+    max-width: 750px;
+    margin: 0 auto;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#knowledge-graph-container {
+    background-color: #ffffff;
+    border: 1px solid #dee2e6;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    width: 434px;
+    height: 237px;
+}
+
+
+#knowledge-graph {
+    width: 400px;
+    height: 200px;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+}
+
+#learning-status {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #fff;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+#gpt-response-editor {
+    border-radius: 10px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    min-height: 300px;
+}
+
+.btn-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+button {
+    margin-right: 10px;
+}
+
+button:last-child {
+    margin-right: 0;
+}
+
+#prompt-section p,
+#gpt-response p {
+    margin: 0;
+    padding: 5px 0;
+}
+
+.fade-in {
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+.fade-in.show {
+    opacity: 1;
+}
+
+.node circle {
+    fill: #3498db;
+    stroke: #fff;
+    stroke-width: 3px;
+}
+
+.node text {
+    fill: #333;
+    font: 12px sans-serif;
+}
+
+.link {
+    stroke: #999;
+    stroke-opacity: 0.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .row {
+        flex-direction: column;
+    }
+
+    .header h1 {
+        font-size: 24px;
+    }
+
+    .btn-group {
+        flex-direction: column;
+    }
+}
+
+.bubble-container {
+    display: flex;
+    justify-content: flex-start;
+    padding: 10px;
+}
+
+.bubble {
+    background-color: #f1f1f1;
+    border-radius: 15px;
+    padding: 10px 15px;
+    max-width: 300px;
+    word-wrap: break-word;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.bubble p {
+    margin: 0;
+}
+
+.container {
+    position: relative; /* 让子元素可以相对定位 */
+}
+
+#gpt-response-section {
+    width: 100%; /* 保持GPT响应区域占据整个宽度 */
+}
+
+#next-prompts-container {
+    position: absolute;
+    top: 0;
+    right: -320px; /* 使其悬浮在GPT响应区域的右侧 */
+    width: 300px; /* 固定宽度 */
+}
+
+.bubble-container {
+    display: flex;
+    justify-content: flex-start;
+    padding: 10px;
+}
+
+.bubble {
+    background-color: #f1f1f1;
+    border-radius: 15px;
+    padding: 10px 15px;
+    max-width: 100%;
+    word-wrap: break-word;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.bubble p {
+    margin: 0;
+}
+
+#loading-spinner {
+    display: none;
+    text-align: center;
+    font-size: 18px;
+    color: #007bff;
+    margin-top: 10px;
+}
+
+#next-prompts-container {
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#next-prompts-container .card-body {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 15px;
+}
+
+#next-prompts-container .card-title {
+    font-size: 1.25rem;
+    color: #333;
+}
+
+#next-prompts-container .card-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #555;
+}
+#gpt-response-section, #next-prompts-container {
+    display: none;
+}

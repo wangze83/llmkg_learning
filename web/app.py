@@ -21,19 +21,20 @@ def query_openai_api(prompt, context=None):
         "Content-Type": "application/json"
     }
 
-    messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    messages = [{"role": "system",
+                 "content": "You are an experienced educator and learning assistant, helping students in a clear and concise manner."}]
 
     if context:
         messages.append({"role": "system", "content": f"Context: {context}"})
 
-    prompt_with_length_limit = f"{prompt} Please keep your response short and concise."
+    prompt_with_length_limit = f"{prompt} Please keep your response educational and focused."
 
     messages.append({"role": "user", "content": prompt_with_length_limit})
 
     data = {
         "model": config.get("model_name", "gpt-4o-mini"),
         "messages": messages,
-        "max_tokens": 150
+        "max_tokens": 200
     }
 
     if config.get("use_proxies", False):
@@ -182,20 +183,33 @@ def generate_prompt():
 
     level = knowledge_graph["level"]
     if level == "beginner":
-        template = "Explain the basics of {keywords} in a simple way, assuming the student is just starting to learn {course}."
+        template = "As a learning assistant, guide the student through the basics of {keywords} relevant to {course}, ensuring clarity and engagement."
     elif level == "intermediate":
-        template = "Provide a more detailed explanation of {keywords}, including practical examples related to {course}."
+        template = "Provide a detailed explanation of {keywords}, incorporating practical examples from {course}. Ensure the content is challenging yet approachable."
     elif level == "advanced":
         template = "Discuss advanced concepts of {keywords}, and explore how they apply to real-world scenarios in {course}. The student has experience with {skills}."
     else:
         template = "Describe {keywords}."
 
-    if knowledge_graph['skills']:
+    skills = knowledge_graph["skills"]
+    if isinstance(skills, str):
+        skills = skills
+    else:
+        skills = ", ".join(skills)
+
+    if skills:
         template += " Also, consider the student's prior knowledge in {skills}."
 
-    prompt = template.format(keywords=", ".join(keywords), course=knowledge_graph["course"],
-                             skills=", ".join(knowledge_graph["skills"]))
+    logging.debug(f"skills log: {knowledge_graph['skills']}")
 
+    # 修正关键词和技能的格式
+    prompt = template.format(
+        keywords=", ".join(keywords),
+        course=knowledge_graph["course"],
+        skills=skills
+    )
+
+    logging.debug(f"prompt log: {prompt}")
     previous_context = data.get('search-input', '')
     if previous_context:
         prompt = f"Previously, the student was learning about {previous_context}. Now, {prompt}"
@@ -204,18 +218,24 @@ def generate_prompt():
 
 
 def split_keywords(user_input):
-    keywords = extract_keywords_tfidf(user_input)
-    logging.debug(f"TF-IDF extracted keywords: {keywords}")
+    # 构建适合的 prompt 用于 OpenAI 提取关键词
+    prompt = (
+        f"Extract the most relevant and significant keywords from the following text. "
+        f"Exclude common phrases or words that express the user's intention or desires, such as 'want', 'get start', etc. "
+        f"Text: '{user_input}'"
+    )
 
-    # if len(keywords) < 3:
-    #     logging.debug("TF-IDF extraction resulted in fewer keywords than expected. Falling back to OpenAI API.")
-    #     openai_keywords = query_openai_api(f"Extract keywords from the following text: '{user_input}'")
-    #     logging.debug(f"OpenAI extracted keywords: {openai_keywords}")
-    #
-    #     keywords = list(set(keywords).union(set(openai_keywords.split(','))))
-
-    logging.debug(f"Final extracted keywords: {keywords}")
-    return keywords
+    # 使用 OpenAI API 提取关键词
+    response = query_openai_api(prompt)
+    if 'choices' in response and len(response['choices']) > 0:
+        # 从 OpenAI 的回复中提取关键词
+        keywords = response['choices'][0]['message']['content'].strip().split(', ')
+        # 筛除掉无用的关键词（如表示意图的词）
+        filtered_keywords = [kw for kw in keywords if kw.lower() not in {'want', 'get start'}]
+        logging.debug(f"Filtered keywords: {filtered_keywords}")
+        return filtered_keywords
+    else:
+        raise Exception("Failed to extract keywords from OpenAI API")
 
 
 def extract_keywords_tfidf(text, top_n=5):
@@ -233,14 +253,14 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 def query_gpt():
     data = request.json
     prompt = data['prompt']
-    username = data.get('username')
-
-    response = query_openai_api(prompt)
-    content = response['choices'][0]['message']['content']
+    username = data['username']
 
     user_data = get_user_knowledge_graph(username)
     if not user_data:
         return jsonify({'error': 'User not found'}), 404
+
+    response = query_openai_api(prompt)
+    content = response['choices'][0]['message']['content']
 
     verification_prompt = (
         "You are a helpful assistant. A student with the following knowledge graph is learning:"
@@ -274,18 +294,21 @@ def get_next_prompts(previous_query_result, previous_prompt):
     if level == "beginner":
         template = (
             "A beginner student studying {course} with the goal of {goal} received the following result: '{previous_query_result}'. "
-            "Generate 3 simple, foundational prompts that help the student reinforce basic concepts and move forward.")
+            "Generate 3 simple, foundational prompts that directly address the student's learning without any introduction or preamble.")
     elif level == "intermediate":
         template = (
             "A student with intermediate knowledge in {course} and aiming for {goal} got the following result: '{previous_query_result}'. "
-            "Generate 3 prompts that challenge the student to deepen their understanding and apply their knowledge in practical scenarios.")
+            "Generate 3 prompts that challenge the student to deepen their understanding and apply their knowledge in practical scenarios. "
+            "Ensure the prompts are concise and omit any introduction or preamble.")
     elif level == "advanced":
         template = (
             "An advanced student proficient in {skills} and studying {course} with the goal of {goal} got the following result: '{previous_query_result}'. "
-            "Generate 3 complex, high-level prompts that push the student towards mastery and research-level understanding.")
+            "Generate 3 complex, high-level prompts that push the student towards mastery and research-level understanding. "
+            "The prompts should be direct, with no introductory remarks.")
     else:
         template = (
-            "Based on the previous result: '{previous_query_result}', generate 3 next prompts for the student's further learning.")
+            "Based on the previous result: '{previous_query_result}', generate 3 next prompts for the student's further learning. "
+            "Ensure the prompts are straightforward and do not include any preamble.")
 
     prompt = template.format(previous_query_result=previous_query_result, course=course, skills=", ".join(skills),
                              goal=goal)

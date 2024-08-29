@@ -7,132 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            color: #495057;
-            margin: 20px;
-        }
-
-        .header, .main-content, .footer {
-            margin-bottom: 20px;
-        }
-
-        .header h1 {
-            font-size: 28px;
-            color: #343a40;
-            text-align: center;
-        }
-
-        #main-content {
-            max-width: 750px;
-            margin: 0 auto;
-        }
-
-        .card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        #knowledge-graph-container {
-            background-color: #ffffff;
-            border: 1px solid #dee2e6;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            width: 434px;
-            height: 237px;
-        }
-
-
-        #knowledge-graph {
-            width: 400px;
-            height: 200px;
-            background-color: #e9ecef;
-            border: 1px solid #ced4da;
-            border-radius: 5px;
-        }
-
-        #learning-status {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #fff;
-            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 10px;
-        }
-
-        #gpt-response-editor {
-            border-radius: 10px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            min-height: 300px;
-        }
-
-        .btn-group {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-        }
-
-        button {
-            margin-right: 10px;
-        }
-
-        button:last-child {
-            margin-right: 0;
-        }
-
-        #prompt-section p,
-        #gpt-response p {
-            margin: 0;
-            padding: 5px 0;
-        }
-
-        .fade-in {
-            opacity: 0;
-            transition: opacity 1s ease-in-out;
-        }
-
-        .fade-in.show {
-            opacity: 1;
-        }
-
-        .node circle {
-            fill: #3498db;
-            stroke: #fff;
-            stroke-width: 3px;
-        }
-
-        .node text {
-            fill: #333;
-            font: 12px sans-serif;
-        }
-
-        .link {
-            stroke: #999;
-            stroke-opacity: 0.6;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .row {
-                flex-direction: column;
-            }
-
-            .header h1 {
-                font-size: 24px;
-            }
-
-            .btn-group {
-                flex-direction: column;
-            }
-        }
-
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 </head>
 <body>
 
@@ -141,7 +16,6 @@
     <div id="toast-container"></div>
 </div>
 
-
 <div class="container">
     <div class="header">
         <h1><i class="fas fa-graduation-cap"></i> Learning Assistant</h1>
@@ -149,7 +23,6 @@
     <!-- Main Content Section -->
     <div class="main-content">
         <div class="row">
-
 
             <!-- Modal -->
             <div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formModalLabel" aria-hidden="true">
@@ -201,7 +74,7 @@
                     </div>
                 </div>
             </div>
-            <div class="row justify-content-center" style="margin-left: 45px;">
+            <div class="row justify-content-center" style="margin-left: 105px;">
 
                 <div class="col-md-5">
                     <div id="learning-status" class="card text-center mx-auto mt-4 p-3" style="max-width: 480px;">
@@ -226,37 +99,51 @@
                 <div id="search-section" class="mt-4">
                     <input type="text" id="search-input" class="form-control" placeholder="Enter your learning goal...">
                     <button class="btn btn-secondary mt-2" onclick="generatePrompt()">Generate Prompt</button>
+                    <div id="loading-spinner-2" style="display:none;">
+                        <i class="fas fa-spinner fa-spin"></i> Request in progress...
+                    </div>
                 </div>
 
                 <div id="prompt-section" class="card mt-4 p-3" style="display: none;">
                     <p>Generated Prompt:</p>
                     <p id="generated-prompt" class="bg-light p-2 rounded"></p>
                     <button class="btn btn-info" onclick="searchGPT()"><i class="fas fa-search"></i>Search</button>
-                </div>
-
-                <div id="gpt-response-section" class="mt-4">
-                    <textarea id="gpt-response-editor" class="card p-3 bg-light">
-            Creating a learning path for Natural Language Processing (NLP) involves a structured approach to understanding both the foundational concepts of computer science and the specific techniques and tools used in NLP. Since you mentioned having an intermediate level understanding in computer science (CS1), I’ll provide a comprehensive learning path that builds on that knowledge. ### **Learning Path for Natural Language Processing (NLP)** #### **1. Strengthen Your Foundations** - **Programming Skills:** - **Python:** Learn essential Python libraries for data manipulation (NumPy, pandas) and visualization (Matplotlib, Seaborn). - **Data Structures & Algorithms:** - Understand basic data structures (lists, queues, stacks, trees) and algorithms (sorting, searching). - **Mathematics:** - Brush up on linear algebra, probability, and statistics, as they are fundamental in NLP. #### **2. Get Acquainted with Text Processing** - **Text Preprocessing Techniques:** - Learn about tokenization, stemming, lemmatization, stopword removal, and text normalization. - **Regular Expressions:** - Practice using regular expressions for pattern matching and text manipulation.
-        </textarea>
-
-                    <div class="btn-group mt-3">
-                        <button class="btn btn-success" onclick="copyText()"><i class="fas fa-copy"></i> Copy</button>
-                        <button class="btn btn-warning" onclick="regeneratePrompt()" style="--bs-btn-color:white"><i
-                                class="fas fa-sync-alt"></i> Regenerate
-                        </button>
-                        <button class="btn btn-danger" onclick="handleResponse('bad')"><i
-                                class="fas fa-thumbs-down"></i> Bad Response
-                        </button>
-                        <button class="btn btn-primary" onclick="handleResponse('good')"><i
-                                class="fas fa-thumbs-up"></i> Good Response
-                        </button>
+                    <div id="loading-spinner">
+                        <i class="fas fa-spinner fa-spin"></i> Request in progress...
                     </div>
                 </div>
+                <div class="container">
+                    <div id="gpt-response-section" class="mt-4">
+                    <textarea id="gpt-response-editor" class="card p-3 bg-light">
+                    </textarea>
+
+                        <div class="btn-group mt-3">
+                            <button class="btn btn-success" onclick="copyText()"><i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="btn btn-warning" onclick="regeneratePrompt()" style="--bs-btn-color:white"><i
+                                    class="fas fa-sync-alt"></i> Regenerate
+                            </button>
+                            <button class="btn btn-danger" onclick="handleResponse('bad')"><i
+                                    class="fas fa-thumbs-down"></i> Bad Response
+                            </button>
+                            <button class="btn btn-primary" onclick="handleResponse('good')"><i
+                                    class="fas fa-thumbs-up"></i> Good Response
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="next-prompts-container" class="card my-3">
+                        <div class="card-body">
+                            <h6 class="card-title">Future Inquiry Directions</h6>
+                            <p class="card-text" id="next-prompts-text">
+
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-            <div id="next-prompts-container">
-                <!-- Next prompts will be displayed here -->
-            </div>
             <div class="footer text-center mt-4">
                 <p>&copy; 2024 Learning Assistant. All rights reserved.</p>
             </div>
@@ -264,366 +151,13 @@
     </div>
 </div>
 
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/graphlib/2.1.8/graphlib.min.js"></script>
 <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.2.1/cytoscape-dagre.min.js"></script>
-
-
-<script>
-    function copyText() {
-        const textArea = document.getElementById('gpt-response-editor');
-        textArea.select();
-        document.execCommand('copy');
-        showToast('Text copied to clipboard!', 'success');
-    }
-
-    const easyMDE = new EasyMDE({
-        element: document.getElementById('gpt-response-editor'),
-        renderingConfig: {
-            singleLineBreaks: true,
-            codeSyntaxHighlighting: true,
-        },
-        minHeight: "300px",
-        maxHeight: "500px",
-        status: false,
-    });
-
-    function showToast(message, type = 'info') {
-        const toastContainer = document.getElementById('toast-container');
-        const toastId = 'toast-' + Date.now();
-        const toastHTML = `
-            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            </div>
-        `;
-        toastContainer.innerHTML += toastHTML;
-        const toastElement = new bootstrap.Toast(document.getElementById(toastId));
-        toastElement.show();
-
-        setTimeout(() => {
-            toastElement.hide();
-        }, 3000);
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        const username = document.getElementById('username').value;
-        fetch(`/get_learning_state?username=${username}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.learning_state) {
-                    const learningStatusDiv = document.getElementById('learning-status');
-                    learningStatusDiv.style.display = "block";
-                    learningStatusDiv.innerHTML = `
-                    <h3><i class="fas fa-chart-line"></i> Current learning status</h3>
-                    <p>Course: ${data.learning_state.course}</p>
-                    <p>Skill Level: ${data.learning_state.level}</p>
-                    <p>Learning Goal: ${data.learning_state.goal}</p>
-                    <p>Skills acquired: ${data.learning_state.skills}</p>
-                `;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-    });
-
-    var myModal = new bootstrap.Modal(document.getElementById('formModal'));
-
-    function saveForm() {
-        const form = document.getElementById('user-form');
-        const fields = [
-            {id: 'username', message: 'Please enter your username.'},
-            {id: 'course', message: 'Please enter the course name.'},
-            {id: 'goal', message: 'Please enter your learning goal.'}
-        ];
-
-        let formValid = true;
-
-        fields.forEach(field => {
-            const input = document.getElementById(field.id);
-            if (input) {
-                if (input.value.trim() === '') {
-                    input.setCustomValidity(field.message);
-                    formValid = false;
-                } else {
-                    input.setCustomValidity('');
-                }
-            } else {
-                console.error(`Element with ID '${field.id}' not found.`);
-                formValid = false;
-            }
-        });
-
-        if (formValid && form.checkValidity()) {
-            const formData = {
-                username: document.getElementById('username').value.trim(),
-                course: document.getElementById('course').value.trim(),
-                level: document.querySelector('input[name="level"]:checked').value,
-                goal: document.getElementById('goal').value.trim(),
-                skills: document.getElementById('skills').value.trim()
-            };
-
-            fetch('/save_form', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            })
-                .then(response => response.json())
-                .then(data => {
-                    showToast(data.message, 'success');
-                    myModal.hide();
-                    const username = encodeURIComponent(formData.username);
-                    window.location.href = `?username=${username}`;
-                });
-        } else {
-            form.reportValidity();
-        }
-    }
-
-    function showForm() {
-        const username = document.getElementById('username').value;
-        fetch(`/get_user_data?username=${encodeURIComponent(username)}`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('username').value = data.username;
-                document.getElementById('course').value = data.course;
-                const levelRadioButtons = document.getElementsByName('level');
-                levelRadioButtons.forEach(button => {
-                    if (button.value === data.level) {
-                        button.checked = true;
-                    }
-                });
-                document.getElementById('goal').value = data.goal;
-                document.getElementById('skills').value = data.skills;
-                document.getElementById('form-modal').style.display = 'block';
-                document.getElementById('main-content').style.display = 'none';
-            });
-    }
-
-    function generatePrompt() {
-        const userInput = document.getElementById('search-input').value;
-        const username = document.getElementById('username').value;
-
-        // 调用服务器拆分关键词并生成提示
-        fetch('/generate_prompt', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                input: userInput,
-                username: username
-            })
-        })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('generated-prompt').innerText = data.prompt;
-                document.getElementById('prompt-section').style.display = 'block';
-            });
-    }
-
-
-    function searchGPT() {
-        const prompt = document.getElementById('generated-prompt').innerText;
-        const gptResponseSection = document.getElementById('gpt-response-section');
-        const username = document.getElementById('username').value;
-
-        gptResponseSection.style.display = 'block';
-
-        fetch('/query_gpt', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({prompt: prompt})
-        })
-            .then(response => response.json())
-            .then(data => {
-                const gptResponseDiv = document.getElementById('gpt-response-editor');
-                gptResponseDiv.innerText = '';
-
-                const segments = data.response.split(/(?<=[。！？])\s*/);
-                let currentIndex = 0;
-
-                function displayNextSegment() {
-                    if (currentIndex < segments.length) {
-                        const p = document.createElement('p');
-                        p.textContent = segments[currentIndex];
-                        gptResponseDiv.appendChild(p);
-                        currentIndex++;
-
-                        setTimeout(displayNextSegment, 1000);
-                    }
-                }
-
-                displayNextSegment();
-
-                fetchNextPrompts(data.response, prompt, username)
-            })
-            .catch(error => {
-                console.error('Error fetching GPT response:', error);
-            });
-    }
-
-    function handleResponse(type) {
-        if (type === "bad") {
-            showToast('Feedback received. Please try to regenerate Or We will try to improve the model later.', 'warning');
-        } else {
-
-            const prompt = document.getElementById('search-input').value;
-            const response = easyMDE.value();
-
-            fetch(`/handle_response`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({type, prompt, response})
-            })
-                .then(response => response.json())
-                .then(data => {
-                    showToast(data.message, 'success');
-                });
-        }
-    }
-
-    function regeneratePrompt() {
-        searchGPT()
-    }
-
-    // Function to fetch next prompts from the backend
-    async function fetchNextPrompts(previousQueryResult, previousPrompt, username) {
-        try {
-            const response = await fetch(`/next_prompts?username=${username}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    previous_query_result: previousQueryResult,
-                    previous_prompt: previousPrompt
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`Error: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            displayNextPrompts(data.next_prompts);
-        } catch (error) {
-            console.error('Error fetching next prompts:', error);
-        }
-    }
-
-    // Function to display the prompts on the UI
-    function displayNextPrompts(prompts) {
-        const promptsContainer = document.getElementById('next-prompts-container');
-        promptsContainer.innerHTML = '';
-
-        prompts.forEach(prompt => {
-            const promptElement = document.createElement('p');
-            promptElement.textContent = prompt;
-            promptsContainer.appendChild(promptElement);
-        });
-    }
-
-    cytoscape.use(cytoscapeDagre);
-
-    async function fetchKnowledgeGraph(username) {
-        try {
-            const response = await fetch(`/get_knowledge_graph?username=${username}`);
-            const data = await response.json();
-
-            console.log("Fetched data:", data);  // Debugging output
-
-            if (!data.nodes || !data.edges) {
-                console.error("Knowledge graph data is empty or undefined.");
-                return;
-            }
-
-            renderKnowledgeGraph(data);
-        } catch (error) {
-            console.error("Error fetching knowledge graph:", error);
-        }
-    }
-
-    function renderKnowledgeGraph(graphData) {
-        const cy = cytoscape({
-            container: document.getElementById('knowledge-graph'),
-            elements: [
-                ...graphData.nodes,
-                ...graphData.edges
-            ],
-            style: [
-                {
-                    selector: 'node',
-                    style: {
-                        'background-color': function (ele) {
-                            switch (ele.data('id')) {
-                                case 'Course':
-                                    return '#3498db';
-                                case 'Level':
-                                    return '#2ecc71';
-                                case 'Goal':
-                                    return '#e74c3c';
-                                case 'Skills':
-                                    return '#f1c40f';
-                                default:
-                                    return '#9b59b6';
-                            }
-                        },
-                        'label': 'data(label)',
-                        'color': '#ffffff',
-                        'text-valign': 'center',
-                        'text-halign': 'center',
-                        'font-size': '14px',
-                    }
-                },
-                {
-                    selector: 'edge',
-                    style: {
-                        'width': 2,
-                        'line-color': '#7f8c8d',
-                        'target-arrow-color': '#7f8c8d',
-                        'target-arrow-shape': 'triangle',
-                        'curve-style': 'bezier',
-                    }
-                }
-            ],
-            layout: {
-                name: 'cose',
-                directed: true,
-                padding: 10
-            }
-        });
-    }
-
-
-    username = document.getElementById('username').value;
-    fetchKnowledgeGraph(username);
-
-    document.addEventListener('DOMContentLoaded', function () {
-        anime({
-            targets: '.fade-in',
-            opacity: [0, 1],
-            duration: 1000,
-            easing: 'easeInOutQuad'
-        });
-    });
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="{{ url_for('static', filename='js/index.js') }}"></script>
 
 </body>
 </html>
