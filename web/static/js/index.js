@@ -70,15 +70,58 @@ function fetchLearningState(username) {
         });
 }
 
-var myModal = new bootstrap.Modal(document.getElementById('formModal'));
+let myModal;
+
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('formModal');
+    myModal = new bootstrap.Modal(modalElement);
+
+    // Fetch and display learning state when the document is loaded
+    const username = document.getElementById('username').value;
+    fetchLearningState(username);
+
+    const viewEditFormBtn = document.getElementById('view-edit-form-btn');
+    if (viewEditFormBtn) {
+        viewEditFormBtn.addEventListener('click', showForm);
+    }
+
+    const closeButton = document.querySelector('[aria-label="Close"]');
+    if (closeButton) {
+        closeButton.addEventListener('click', function () {
+            myModal.hide();
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+        });
+    }
+
+    // Show modal on page load if no username is provided
+    const queryUsername = getQueryParameter('username');
+    if (!queryUsername) {
+        myModal.show();
+    }
+
+    // Initialize EasyMDE editor
+    const easyMDE = new EasyMDE({
+        element: document.getElementById('gpt-response-editor'),
+        renderingConfig: {
+            singleLineBreaks: true,
+            codeSyntaxHighlighting: true,
+        },
+        minHeight: "300px",
+        maxHeight: "500px",
+        status: false,
+    });
+
+    // Set global variable for the editor
+    window.easyMDE = easyMDE;
+});
 
 // Function to save form data
 function saveForm() {
     const form = document.getElementById('user-form');
     const fields = [
-        { id: 'username', message: 'Please enter your username.' },
-        { id: 'course', message: 'Please enter the course name.' },
-        { id: 'goal', message: 'Please enter your learning goal.' }
+        {id: 'username', message: 'Please enter your username.'},
+        {id: 'course', message: 'Please enter the course name.'},
+        {id: 'goal', message: 'Please enter your learning goal.'}
     ];
 
     let formValid = true;
@@ -93,9 +136,10 @@ function saveForm() {
         }
     });
 
+    username = document.getElementById('username').value.trim()
     if (formValid && form.checkValidity()) {
         const formData = {
-            username: document.getElementById('username').value.trim(),
+            username: username,
             course: document.getElementById('course').value.trim(),
             level: document.querySelector('input[name="level"]:checked').value,
             goal: document.getElementById('goal').value.trim(),
@@ -111,14 +155,19 @@ function saveForm() {
 
             fetch('/save_form', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(formData)
             })
                 .then(response => response.json())
                 .then(data => {
                     showToast(data.message, 'success');
                     const username = encodeURIComponent(formData.username);
-                    window.location.href = `?username=${username}`;
+                    if (username === "") {
+                        window.location.href = `?username=${username}`;
+                    } else {
+                        fetchLearningState(username)
+                        fetchKnowledgeGraph(username)
+                    }
                 });
         }
 
@@ -131,16 +180,9 @@ function saveForm() {
     }
 }
 
-
-
-
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const viewEditFormBtn = document.getElementById('view-edit-form-btn');
     viewEditFormBtn.addEventListener('click', showForm);
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    closeform()
 });
 
 function closeform() {
@@ -159,7 +201,7 @@ function closeform() {
 
     const myModal = new bootstrap.Modal(modalElement);
 
-    closeButton.addEventListener('click', function() {
+    closeButton.addEventListener('click', function () {
 
         console.log('Close button clicked');
         myModal.hide();
@@ -167,7 +209,6 @@ function closeform() {
         document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
     });
 }
-
 
 function showForm() {
     const username = document.getElementById('username').value;
@@ -178,7 +219,7 @@ function showForm() {
     fetch(`/get_learning_state?username=${encodeURIComponent(username)}`)
         .then(response => response.json())
         .then(data => {
-            data = data.learning_state
+            data = data.learning_state;
             document.getElementById('username').value = data.username || '';
             document.getElementById('course').value = data.course || '';
             const levelRadioButtons = document.getElementsByName('level');
@@ -195,7 +236,6 @@ function showForm() {
         });
 
     // Show the modal after the data is loaded
-    var myModal = new bootstrap.Modal(document.getElementById('formModal'));
     myModal.show();
 }
 
@@ -228,7 +268,7 @@ function generatePrompt() {
         });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const easyMDE = new EasyMDE({
         element: document.getElementById('gpt-response-editor'),
         renderingConfig: {
@@ -280,7 +320,6 @@ function searchGPT() {
             spinner.style.display = 'none';
         });
 }
-
 
 
 function handleResponse(type) {
