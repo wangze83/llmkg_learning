@@ -7,4 +7,7 @@ run:
 	cd docker && docker-compose -p "$(DEV_NAME)" down && docker-compose -p "$(DEV_NAME)" up --force-recreate
 
 basic_flask_image:
+	docker build -f docker/Dockerfile-Flask-noSpecifying -t flask_image .
+
+basic_flask_image_cn:
 	docker build -f docker/Dockerfile-Flask -t flask_image .
