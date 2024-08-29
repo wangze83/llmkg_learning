@@ -140,18 +140,18 @@ button:last-child {
 }
 
 .container {
-    position: relative; /* 让子元素可以相对定位 */
+    position: relative;
 }
 
 #gpt-response-section {
-    width: 100%; /* 保持GPT响应区域占据整个宽度 */
+    width: 100%;
 }
 
 #next-prompts-container {
     position: absolute;
     top: 0;
-    right: -320px; /* 使其悬浮在GPT响应区域的右侧 */
-    width: 300px; /* 固定宽度 */
+    right: -320px;
+    width: 300px;
 }
 
 .bubble-container {

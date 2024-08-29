@@ -6,3 +6,5 @@ python-dotenv
 requests[socks]
 flask-socketio
 scikit-learn
+textblob
+nltk

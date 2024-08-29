@@ -258,6 +258,7 @@ def query_gpt():
 
     response = query_openai_api(prompt)
     content = response['choices'][0]['message']['content']
+    logging.debug(f"query_gpt origin content: {content}")
 
     verification_prompt = (
         "You are a helpful assistant. A student with the following knowledge graph is learning:"

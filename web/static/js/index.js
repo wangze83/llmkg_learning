@@ -21,25 +21,37 @@ function copyText() {
 
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toast-container');
+
+    // Clear any existing toasts
+    toastContainer.innerHTML = '';
+
     const toastId = 'toast-' + Date.now();
     const toastHTML = `
-            <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
                 </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
-        `;
+        </div>
+    `;
     toastContainer.innerHTML += toastHTML;
-    const toastElement = new bootstrap.Toast(document.getElementById(toastId));
-    toastElement.show();
+
+    const toastElement = document.getElementById(toastId);
+    const toastInstance = new bootstrap.Toast(toastElement);
+
+    toastInstance.show();
 
     setTimeout(() => {
-        toastElement.hide();
+        toastInstance.hide();
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
     }, 3000);
 }
+
+
 
 document.addEventListener('DOMContentLoaded', function () {
     const username = document.getElementById('username').value;
@@ -98,21 +110,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!queryUsername) {
         myModal.show();
     }
-
-    // Initialize EasyMDE editor
-    const easyMDE = new EasyMDE({
-        element: document.getElementById('gpt-response-editor'),
-        renderingConfig: {
-            singleLineBreaks: true,
-            codeSyntaxHighlighting: true,
-        },
-        minHeight: "300px",
-        maxHeight: "500px",
-        status: false,
-    });
-
-    // Set global variable for the editor
-    window.easyMDE = easyMDE;
 });
 
 // Function to save form data
@@ -249,7 +246,6 @@ function generatePrompt() {
     }
     document.getElementById('loading-spinner-2').style.display = 'block';
 
-    // 调用服务器拆分关键词并生成提示
     fetch('/generate_prompt', {
         method: 'POST',
         headers: {
@@ -268,23 +264,6 @@ function generatePrompt() {
         });
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    const easyMDE = new EasyMDE({
-        element: document.getElementById('gpt-response-editor'),
-        renderingConfig: {
-            singleLineBreaks: true,
-            codeSyntaxHighlighting: true,
-        },
-        minHeight: "300px",
-        maxHeight: "500px",
-        status: false,
-    });
-
-    // 在这里设置全局变量
-    window.easyMDE = easyMDE;
-});
-
-
 function searchGPT() {
     const prompt = document.getElementById('generated-prompt').innerText;
     const gptResponseSection = document.getElementById('gpt-response-section');
@@ -298,29 +277,33 @@ function searchGPT() {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({prompt: prompt, username: username})
+        body: JSON.stringify({ prompt: prompt, username: username })
     })
         .then(response => response.json())
         .then(data => {
-            const gptResponseEditor = document.getElementById('gpt-response-editor');
+            spinner.style.display = 'none';
 
-            if (typeof easyMDE !== 'undefined' && easyMDE) {
-                easyMDE.value(data.response);
-            } else {
-                gptResponseEditor.value = data.response;
+            if (window.easyMDE) {
+                window.easyMDE.toTextArea();
+                window.easyMDE = null;
             }
 
-            gptResponseSection.style.display = 'block';
+            document.getElementById('gpt-response-editor').value = data.response;
+
+            window.easyMDE = new EasyMDE({
+                element: document.getElementById('gpt-response-editor'),
+                renderingConfig: {
+                    singleLineBreaks: true,
+                    codeSyntaxHighlighting: true,
+                },
+                minHeight: "300px",
+                maxHeight: "500px",
+                status: false,
+            });
             fetchNextPrompts(data.response, prompt);
-        })
-        .catch(error => {
-            console.error('Error fetching GPT response:', error);
-        })
-        .finally(() => {
-            spinner.style.display = 'none';
+            gptResponseSection.style.display = 'block';
         });
 }
-
 
 function handleResponse(type) {
     if (type === "bad") {
@@ -470,7 +453,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-
 function getQueryParameter(name) {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get(name);
@@ -483,8 +465,3 @@ document.addEventListener('DOMContentLoaded', function () {
         myModal.show()
     }
 });
-
-
-
-
-
