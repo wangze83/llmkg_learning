@@ -130,7 +130,8 @@ def get_learning_state():
                 'course': user['course'],
                 'level': user['level'],
                 'goal': user['goal'],
-                'skills': user['skills']
+                'skills': user['skills'],
+                'username': username
             }
         })
     else:
@@ -218,19 +219,15 @@ def generate_prompt():
 
 
 def split_keywords(user_input):
-    # 构建适合的 prompt 用于 OpenAI 提取关键词
     prompt = (
-        f"Extract the most relevant and significant keywords from the following text. "
-        f"Exclude common phrases or words that express the user's intention or desires, such as 'want', 'get start', etc. "
+        f"Extract the most relevant and significant programming keywords from the following text. Python functions can be used directly."
+        f"Exclude common phrases or words that express the user's intention or desires, such as 'keywords', 'Here are the', 'want', 'get start', 'learn' etc. "
         f"Text: '{user_input}'"
     )
 
-    # 使用 OpenAI API 提取关键词
     response = query_openai_api(prompt)
     if 'choices' in response and len(response['choices']) > 0:
-        # 从 OpenAI 的回复中提取关键词
         keywords = response['choices'][0]['message']['content'].strip().split(', ')
-        # 筛除掉无用的关键词（如表示意图的词）
         filtered_keywords = [kw for kw in keywords if kw.lower() not in {'want', 'get start'}]
         logging.debug(f"Filtered keywords: {filtered_keywords}")
         return filtered_keywords
@@ -294,21 +291,22 @@ def get_next_prompts(previous_query_result, previous_prompt):
     if level == "beginner":
         template = (
             "A beginner student studying {course} with the goal of {goal} received the following result: '{previous_query_result}'. "
-            "Generate 3 simple, foundational prompts that directly address the student's learning without any introduction or preamble.")
+            "Generate 3 simple, foundational prompts that directly address the student's learning. "
+            "Only include the title or question of the prompt, without any further explanation or code.")
     elif level == "intermediate":
         template = (
             "A student with intermediate knowledge in {course} and aiming for {goal} got the following result: '{previous_query_result}'. "
-            "Generate 3 prompts that challenge the student to deepen their understanding and apply their knowledge in practical scenarios. "
-            "Ensure the prompts are concise and omit any introduction or preamble.")
+            "Generate 3 prompts that challenge the student to deepen their understanding and apply their knowledge. "
+            "Provide only the title or question for each prompt, without any additional explanation.")
     elif level == "advanced":
         template = (
             "An advanced student proficient in {skills} and studying {course} with the goal of {goal} got the following result: '{previous_query_result}'. "
             "Generate 3 complex, high-level prompts that push the student towards mastery and research-level understanding. "
-            "The prompts should be direct, with no introductory remarks.")
+            "Include only the title or question for each prompt, without any introductory remarks.")
     else:
         template = (
             "Based on the previous result: '{previous_query_result}', generate 3 next prompts for the student's further learning. "
-            "Ensure the prompts are straightforward and do not include any preamble.")
+            "Provide only the titles or questions for these prompts, without any additional content.")
 
     prompt = template.format(previous_query_result=previous_query_result, course=course, skills=", ".join(skills),
                              goal=goal)
@@ -346,12 +344,18 @@ def handle_response():
     logging.debug(f"Received data: {data}")
 
     if data['type'] == 'good':
-        content = data.get('content', '')
-        logging.debug(f"Content to process: {content}")
+        username = data.get('username', '')
+        response = data.get('response')
+        prompt = data.get('prompt')
+        logging.debug(f"Content to process: {response}")
+
+        # Check for the specific phrase in the response
+        if "The generated content may not be accurate or well-structured. Please revise the prompt or try again." in response:
+            logging.debug("Received response contains a notice about inaccurate content. Acknowledging without further action.")
+            return jsonify({'message': 'Response acknowledged. No action taken due to the content warning.'})
 
         try:
-            username = data['username']
-            keywords = split_keywords(content)
+            keywords = split_keywords(prompt)
             logging.debug(f"Extracted keywords: {keywords}")
 
             with get_db_connection() as session:
@@ -361,12 +365,15 @@ def handle_response():
                 """, username=username)
 
                 existing_skills_record = existing_skills_result.single()
-                existing_skills = existing_skills_record['skills'].split(', ') if existing_skills_record and \
-                                                                                  existing_skills_record[
-                                                                                      'skills'] else []
+                existing_skills = existing_skills_record['skills'].split(', ') \
+                    if existing_skills_record and existing_skills_record['skills'] \
+                    else []
 
                 new_keywords = [keyword for keyword in keywords if keyword not in existing_skills]
                 logging.debug(f"New keywords to add: {new_keywords}")
+
+                new_keywords = new_keywords[:2]
+                logging.debug(f"Selected top 2 new keywords: {new_keywords}")
 
                 if new_keywords:
                     session.run("""

@@ -19,17 +19,6 @@ function copyText() {
 }
 
 
-const easyMDE = new EasyMDE({
-    element: document.getElementById('gpt-response-editor'),
-    renderingConfig: {
-        singleLineBreaks: true,
-        codeSyntaxHighlighting: true,
-    },
-    minHeight: "300px",
-    maxHeight: "500px",
-    status: false,
-});
-
 function showToast(message, type = 'info') {
     const toastContainer = document.getElementById('toast-container');
     const toastId = 'toast-' + Date.now();
@@ -54,6 +43,13 @@ function showToast(message, type = 'info') {
 
 document.addEventListener('DOMContentLoaded', function () {
     const username = document.getElementById('username').value;
+    fetchLearningState(username);
+});
+
+function fetchLearningState(username) {
+    if (username === "") {
+        return;
+    }
     fetch(`/get_learning_state?username=${username}`)
         .then(response => response.json())
         .then(data => {
@@ -72,32 +68,28 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => {
             console.error('Error:', error);
         });
-});
+}
 
 var myModal = new bootstrap.Modal(document.getElementById('formModal'));
 
+// Function to save form data
 function saveForm() {
     const form = document.getElementById('user-form');
     const fields = [
-        {id: 'username', message: 'Please enter your username.'},
-        {id: 'course', message: 'Please enter the course name.'},
-        {id: 'goal', message: 'Please enter your learning goal.'}
+        { id: 'username', message: 'Please enter your username.' },
+        { id: 'course', message: 'Please enter the course name.' },
+        { id: 'goal', message: 'Please enter your learning goal.' }
     ];
 
     let formValid = true;
 
     fields.forEach(field => {
         const input = document.getElementById(field.id);
-        if (input) {
-            if (input.value.trim() === '') {
-                input.setCustomValidity(field.message);
-                formValid = false;
-            } else {
-                input.setCustomValidity('');
-            }
-        } else {
-            console.error(`Element with ID '${field.id}' not found.`);
+        if (input.value.trim() === '') {
+            input.setCustomValidity(field.message);
             formValid = false;
+        } else {
+            input.setCustomValidity('');
         }
     });
 
@@ -110,43 +102,101 @@ function saveForm() {
             skills: document.getElementById('skills').value.trim()
         };
 
-        fetch('/save_form', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(formData)
-        })
-            .then(response => response.json())
-            .then(data => {
-                showToast(data.message, 'success');
-                myModal.hide();
-                const username = encodeURIComponent(formData.username);
-                window.location.href = `?username=${username}`;
-            });
+        const previousFormData = JSON.parse(localStorage.getItem('previousFormData'));
+
+        if (previousFormData && JSON.stringify(previousFormData) === JSON.stringify(formData)) {
+            showToast('No changes detected. Form not submitted', 'info');
+        } else {
+            localStorage.setItem('previousFormData', JSON.stringify(formData));
+
+            fetch('/save_form', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showToast(data.message, 'success');
+                    const username = encodeURIComponent(formData.username);
+                    window.location.href = `?username=${username}`;
+                });
+        }
+
+        // Hide the modal after saving
+        myModal.hide();
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+
     } else {
         form.reportValidity();
     }
 }
 
+
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    const viewEditFormBtn = document.getElementById('view-edit-form-btn');
+    viewEditFormBtn.addEventListener('click', showForm);
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    closeform()
+});
+
+function closeform() {
+    const closeButton = document.querySelector('[aria-label="Close"]');
+
+    if (!closeButton) {
+        console.error('Close button not found');
+        return;
+    }
+
+    const modalElement = document.getElementById('formModal');
+    if (!modalElement) {
+        console.error('Modal element not found');
+        return;
+    }
+
+    const myModal = new bootstrap.Modal(modalElement);
+
+    closeButton.addEventListener('click', function() {
+
+        console.log('Close button clicked');
+        myModal.hide();
+        // Manually remove the modal backdrop in case it doesn't disappear
+        document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+    });
+}
+
+
 function showForm() {
     const username = document.getElementById('username').value;
-    fetch(`/get_user_data?username=${encodeURIComponent(username)}`)
+    if (!username) {
+        return;
+    }
+
+    fetch(`/get_learning_state?username=${encodeURIComponent(username)}`)
         .then(response => response.json())
         .then(data => {
-            document.getElementById('username').value = data.username;
-            document.getElementById('course').value = data.course;
+            data = data.learning_state
+            document.getElementById('username').value = data.username || '';
+            document.getElementById('course').value = data.course || '';
             const levelRadioButtons = document.getElementsByName('level');
             levelRadioButtons.forEach(button => {
                 if (button.value === data.level) {
                     button.checked = true;
                 }
             });
-            document.getElementById('goal').value = data.goal;
-            document.getElementById('skills').value = data.skills;
-            document.getElementById('form-modal').style.display = 'block';
-            document.getElementById('main-content').style.display = 'none';
+            document.getElementById('goal').value = data.goal || '';
+            document.getElementById('skills').value = data.skills || '';
+        })
+        .catch(error => {
+            console.error('Error fetching user data:', error);
         });
+
+    // Show the modal after the data is loaded
+    var myModal = new bootstrap.Modal(document.getElementById('formModal'));
+    myModal.show();
 }
 
 function generatePrompt() {
@@ -172,11 +222,27 @@ function generatePrompt() {
     })
         .then(response => response.json())
         .then(data => {
-            document.getElementById('loading-spinner').style.display = 'none';
+            document.getElementById('loading-spinner-2').style.display = 'none';
             document.getElementById('generated-prompt').innerText = data.prompt;
             document.getElementById('prompt-section').style.display = 'block';
         });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const easyMDE = new EasyMDE({
+        element: document.getElementById('gpt-response-editor'),
+        renderingConfig: {
+            singleLineBreaks: true,
+            codeSyntaxHighlighting: true,
+        },
+        minHeight: "300px",
+        maxHeight: "500px",
+        status: false,
+    });
+
+    // 在这里设置全局变量
+    window.easyMDE = easyMDE;
+});
 
 
 function searchGPT() {
@@ -198,7 +264,7 @@ function searchGPT() {
         .then(data => {
             const gptResponseEditor = document.getElementById('gpt-response-editor');
 
-            if (easyMDE) {
+            if (typeof easyMDE !== 'undefined' && easyMDE) {
                 easyMDE.value(data.response);
             } else {
                 gptResponseEditor.value = data.response;
@@ -211,17 +277,17 @@ function searchGPT() {
             console.error('Error fetching GPT response:', error);
         })
         .finally(() => {
-            // Hide spinner after request completes
             spinner.style.display = 'none';
         });
 }
+
 
 
 function handleResponse(type) {
     if (type === "bad") {
         showToast('Feedback received. Please try to regenerate Or We will try to improve the model later.', 'warning');
     } else {
-
+        const username = document.getElementById('username').value;
         const prompt = document.getElementById('search-input').value;
         const response = easyMDE.value();
 
@@ -230,12 +296,14 @@ function handleResponse(type) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({type, prompt, response})
+            body: JSON.stringify({type, prompt, response, username: username})
         })
             .then(response => response.json())
             .then(data => {
                 showToast(data.message, 'success');
             });
+        fetchLearningState(username)
+        fetchKnowledgeGraph(username)
     }
 }
 
@@ -260,7 +328,12 @@ async function fetchNextPrompts(response, previousPrompt) {
         .then(data => {
             const nextPromptsContainer = document.getElementById('next-prompts-container');
             if (data.next_prompts) {
-                document.querySelector('.card-text').innerHTML = marked.parse(data.next_prompts);
+                let parsedContent = marked.parse(data.next_prompts);
+
+                // Adjust font size from h3 to a smaller size
+                parsedContent = parsedContent.replace(/<h3>/g, '<h5>').replace(/<\/h3>/g, '</h5>');
+
+                document.querySelector('.card-text').innerHTML = parsedContent;
                 nextPromptsContainer.style.display = 'block';
             } else {
                 nextPromptsContainer.innerHTML = `No further prompts available`;
@@ -275,6 +348,9 @@ async function fetchNextPrompts(response, previousPrompt) {
 cytoscape.use(cytoscapeDagre);
 
 async function fetchKnowledgeGraph(username) {
+    if (username === "") {
+        return;
+    }
     try {
         const response = await fetch(`/get_knowledge_graph?username=${username}`);
         const data = await response.json();
@@ -343,7 +419,6 @@ function renderKnowledgeGraph(graphData) {
     });
 }
 
-
 username = document.getElementById('username').value;
 fetchKnowledgeGraph(username);
 
@@ -355,3 +430,22 @@ document.addEventListener('DOMContentLoaded', function () {
         easing: 'easeInOutQuad'
     });
 });
+
+
+function getQueryParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const username = getQueryParameter('username');
+
+    if (!username) {
+        myModal.show()
+    }
+});
+
+
+
+
+
