@@ -219,21 +219,36 @@ def generate_prompt():
 
 
 def split_keywords(user_input):
-    prompt = (
-        f"Extract the most relevant and significant programming keywords from the following text. Python functions can be used directly."
-        f"Exclude common phrases or words that express the user's intention or desires, such as 'keywords', 'Here are the', 'want', 'get start', 'learn' etc. "
-        f"Text: '{user_input}'"
-    )
+    try :
+        prompt = (
+            f"Extract the most relevant and significant programming keywords from the following text. Python functions can be used directly."
+            f"Exclude common phrases or words that express the user's intention or desires, such as 'keywords', 'Here are the', 'want', 'get start', 'learn' etc. "
+            f"Text: '{user_input}'"
+        )
 
-    response = query_openai_api(prompt)
-    if 'choices' in response and len(response['choices']) > 0:
-        keywords = response['choices'][0]['message']['content'].strip().split(', ')
-        filtered_keywords = [kw for kw in keywords if kw.lower() not in {'want', 'get start'}]
-        logging.debug(f"Filtered keywords: {filtered_keywords}")
-        return filtered_keywords
-    else:
-        raise Exception("Failed to extract keywords from OpenAI API")
+        response = query_openai_api(prompt)
+        if 'choices' in response and len(response['choices']) > 0:
+            keywords = response['choices'][0]['message']['content'].strip().split(', ')
+            extract_keywords = extract_keywords_func(keywords)
+            filtered_keywords = [kw for kw in extract_keywords if kw.lower() not in {'want', 'get start'}]
+            logging.debug(f"Extract keywords: {filtered_keywords}")
+            return filtered_keywords
+        else:
+            raise Exception("Failed to extract keywords from OpenAI API")
+    except Exception as e:
+        logging.error(f" split_keywords Failed to process content: {e}")
+        return []
 
+def extract_keywords_func(filtered_text):
+    # Check if filtered_text is a list, and if so, join it into a single string
+    if isinstance(filtered_text, list):
+        filtered_text = '\n'.join(filtered_text)
+
+    logging.error(f"extract_keywords_func_filtered_text: {filtered_text}")
+
+    # Now, split the input string by newlines and remove any bullet points
+    keywords = [line.replace('- ', '').strip() for line in filtered_text.split('\n') if line.strip()]
+    return keywords
 
 def extract_keywords_tfidf(text, top_n=5):
     vectorizer = TfidfVectorizer(stop_words='english', max_features=top_n)
@@ -245,6 +260,17 @@ def extract_keywords_tfidf(text, top_n=5):
 # 配置日志
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def is_response_acceptable(verification_content):
+    verification_content = verification_content.lower()
+
+    relevance_indicators = ["relevant", "appropriate", "crucial", "fundamental", "key concepts"]
+    clarity_indicators = ["clear", "organized", "structured", "helps in understanding", "effectively demonstrates"]
+
+    # Check for at least one indicator of relevance and one of clarity
+    is_relevant = any(phrase in verification_content for phrase in relevance_indicators)
+    is_clear = any(phrase in verification_content for phrase in clarity_indicators)
+
+    return is_relevant and is_clear
 
 @app.route('/query_gpt', methods=['POST'])
 def query_gpt():
@@ -264,13 +290,15 @@ def query_gpt():
         "You are a helpful assistant. A student with the following knowledge graph is learning:"
         f"Course: {user_data['course']}, Level: {user_data['level']}, Goal: {user_data['goal']}, "
         f"Skills: {user_data['skills']}. The student received the following information from an AI-generated response:"
-        f"'{content}'. Please verify whether this response is accurate and well-structured according to the student's knowledge graph."
+        f"'{content}'. Please assess whether this response is generally helpful and appropriate for the student's knowledge level and goals. "
+        "Focus on whether the information is relevant and reasonably clear, considering the student's current understanding."
     )
 
     verification_response = query_openai_api(verification_prompt)
     verification_content = verification_response['choices'][0]['message']['content']
+    logging.debug(f"verification_content: {verification_content}")
 
-    if "accurate" in verification_content.lower() and "well-structured" in verification_content.lower():
+    if is_response_acceptable(verification_content):
         return jsonify({'response': content})
     else:
         return jsonify({
@@ -352,12 +380,16 @@ def handle_response():
 
         # Check for the specific phrase in the response
         if "The generated content may not be accurate or well-structured. Please revise the prompt or try again." in response:
-            logging.debug("Received response contains a notice about inaccurate content. Acknowledging without further action.")
+            logging.debug(
+                "Received response contains a notice about inaccurate content. Acknowledging without further action.")
             return jsonify({'message': 'Response acknowledged. No action taken due to the content warning.'})
 
         try:
+            logging.debug("11111111111111111111111111111111111111111111111111")
+
             keywords = split_keywords(prompt)
-            logging.debug(f"Extracted keywords: {keywords}")
+            logging.debug(f"handle_response Extracted keywords: {keywords}")
+            logging.debug("2222222222222222222222222222222222222222222222")
 
             with get_db_connection() as session:
                 existing_skills_result = session.run("""
@@ -396,7 +428,6 @@ def handle_response():
 
     logging.debug("Received response type is not 'good'. Acknowledging response.")
     return jsonify({'message': 'Response acknowledged.'})
-
 
 @app.route('/get_knowledge_graph', methods=['GET'])
 def get_knowledge_graph():

@@ -51,8 +51,6 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-
-
 document.addEventListener('DOMContentLoaded', function () {
     const username = document.getElementById('username').value;
     fetchLearningState(username);
@@ -158,8 +156,10 @@ function saveForm() {
                 .then(response => response.json())
                 .then(data => {
                     showToast(data.message, 'success');
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const url_username = urlParams.get('username');
                     const username = encodeURIComponent(formData.username);
-                    if (username === "") {
+                    if (!url_username && username) {
                         window.location.href = `?username=${username}`;
                     } else {
                         fetchLearningState(username)
