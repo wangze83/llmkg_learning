@@ -203,7 +203,6 @@ def generate_prompt():
 
     logging.debug(f"skills log: {knowledge_graph['skills']}")
 
-    # 修正关键词和技能的格式
     prompt = template.format(
         keywords=", ".join(keywords),
         course=knowledge_graph["course"],
@@ -257,7 +256,6 @@ def extract_keywords_tfidf(text, top_n=5):
     return keywords
 
 
-# 配置日志
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def is_response_acceptable(verification_content):

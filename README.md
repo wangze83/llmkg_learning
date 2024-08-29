@@ -21,7 +21,7 @@ To mitigate these challenges, this project introduces a personal knowledge graph
 
 This project serves as a proof-of-concept for a more reliable and personalized LLM-based tutoring system, with the potential to significantly improve the effectiveness of AI-driven learning tools.
 
-![](llmkg_learning.png)
+![](llmkg_learning.jpeg)
 
 
 ## To start
