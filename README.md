@@ -29,17 +29,17 @@ This project serves as a proof-of-concept for a more reliable and personalized L
 ```
     make basic_flask_image
 ```
-user docker
-### Step1 
+User docker
+### Step2 
 ```
     cp web/config/config-template.json web/config/config.json
 ```
 Edit openai_api_key etc.
-### Step4
+### Step3
 ```
     make run
 ```
-### Step5
+### Step4
 ```
     visit 127.0.0.1:5001
 ```
