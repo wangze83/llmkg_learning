@@ -27,7 +27,15 @@ This project serves as a proof-of-concept for a more reliable and personalized L
 ## Interface display
 ![](llmkg_learning.jpeg)
 
-## To start
+## Usage
+
+Before starting the Neo4j service, you need to create the `neo4j_data` directory in the project root directory to store the Neo4j database files and logs.
+Run the following command in the project root:
+
+```bash
+mkdir -p neo4j_data/data neo4j_data/logs neo4j_data/plugins neo4j_data/import
+```
+
 ### Step1
 ```
     make basic_flask_image
